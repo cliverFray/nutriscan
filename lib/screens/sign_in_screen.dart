@@ -1,0 +1,459 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
+import 'bottom_nav_menu.dart';
+import '../models/users.dart';
+import '../services/user_service.dart';
+import 'login_screen.dart';
+import '../widgets/custom_elevated_buton.dart';
+import '../widgets/custom_text_input.dart';
+import '../widgets/custom_title_text.dart';
+import '../widgets/name_app.dart';
+
+class SignInScreen extends StatefulWidget {
+  @override
+  _SignInScreenState createState() => _SignInScreenState();
+}
+
+class _SignInScreenState extends State<SignInScreen> {
+  // Controladores para los inputs
+  final TextEditingController namesController = TextEditingController();
+  final TextEditingController lastNameController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  final TextEditingController dniController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController placeController = TextEditingController();
+
+  // Variables para almacenar mensajes de error
+  String? nameError;
+  String? lastNameError;
+  String? passwordError;
+  String? dniError;
+  String? phoneError;
+  String? emailError;
+  String? placeError;
+  bool acceptedTerms = false; // Estado para términos y condiciones
+  String? termsError; // Mensaje de error para términos y condiciones
+
+  // Función para validar campos
+  void validateFields() {
+    setState(() {
+      nameError =
+          namesController.text.isEmpty ? "Por favor, ingrese su nombre." : null;
+      lastNameError = lastNameController.text.isEmpty
+          ? "Por favor, ingrese su apellido."
+          : null;
+      passwordError = passwordController.text.isEmpty
+          ? "Por favor, ingrese una contraseña."
+          : null;
+      dniError = dniController.text.isEmpty || dniController.text.length != 8
+          ? "El DNI debe tener 8 dígitos."
+          : null;
+      phoneError =
+          phoneController.text.isEmpty || phoneController.text.length != 9
+              ? "El número de teléfono debe tener 9 dígitos."
+              : null;
+      emailError =
+          emailController.text.isEmpty ? "Por favor, ingrese su correo." : null;
+      placeError = placeController.text.isEmpty
+          ? "Por favor, ingrese su lugar de residencia."
+          : null;
+
+      // Validación de términos y condiciones
+      termsError =
+          !acceptedTerms ? "Debe aceptar los términos y condiciones." : null;
+    });
+  }
+
+  // Función para registrar usuario
+  Future<void> registerUser(BuildContext context) async {
+    validateFields();
+
+    // Verificar si hay errores antes de continuar
+    if (nameError == null &&
+        lastNameError == null &&
+        passwordError == null &&
+        dniError == null &&
+        phoneError == null &&
+        emailError == null &&
+        placeError == null &&
+        termsError == null) {
+      User newUser = User(
+        userId: 0, // O un ID generado por el backend
+        userFirstName: namesController.text,
+        userLastName: lastNameController.text,
+        userPassword: passwordController.text,
+        userDNI: dniController.text,
+        userPhone: phoneController.text,
+        userEmail: emailController.text,
+        userRegistrationDate: DateTime.now(),
+        userPlace: placeController.text,
+      );
+
+      UserService us = UserService();
+      String? errorMessage = await us.registerUser(newUser);
+      if (errorMessage == null) {
+        // Registro exitoso
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => BottomNavMenu(),
+          ),
+        );
+      } else {
+        // Mostrar el mensaje de error
+        showDialog(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: Text('Error'),
+              content: Text(errorMessage),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(); // Cierra el diálogo
+                  },
+                  child: Text('Cerrar'),
+                ),
+              ],
+            );
+          },
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Color(0xFFFFFFFF), // Color de fondo
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              NameApp(),
+              SizedBox(height: 8),
+              CustomTitleText(text: 'Regístrate'),
+              SizedBox(height: 40),
+
+              // Input para nombres
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CustomTextInput(
+                    hintText: 'Nombres',
+                    controller: namesController,
+                    keyboardType: TextInputType.text,
+                  ),
+                  if (nameError != null)
+                    Text(
+                      nameError!,
+                      style: TextStyle(color: Colors.red),
+                    ),
+                ],
+              ),
+              SizedBox(height: 16),
+
+              // Input para apellidos
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CustomTextInput(
+                    hintText: 'Apellidos',
+                    controller: lastNameController,
+                    keyboardType: TextInputType.text,
+                  ),
+                  if (lastNameError != null)
+                    Text(
+                      lastNameError!,
+                      style: TextStyle(color: Colors.red),
+                    ),
+                ],
+              ),
+              SizedBox(height: 16),
+
+              // Input para contraseña
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CustomTextInput(
+                    hintText: 'Contraseña',
+                    isPassword: true,
+                    controller: passwordController,
+                  ),
+                  if (passwordError != null)
+                    Text(
+                      passwordError!,
+                      style: TextStyle(color: Colors.red),
+                    ),
+                ],
+              ),
+              SizedBox(height: 16),
+
+              // Input para DNI
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CustomTextInput(
+                    hintText: 'DNI',
+                    controller: dniController,
+                    keyboardType: TextInputType.number,
+                  ),
+                  if (dniError != null)
+                    Text(
+                      dniError!,
+                      style: TextStyle(color: Colors.red),
+                    ),
+                ],
+              ),
+              SizedBox(height: 16),
+
+              // Input para teléfono
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CustomTextInput(
+                    hintText: 'Número de teléfono',
+                    controller: phoneController,
+                    keyboardType: TextInputType.phone,
+                  ),
+                  if (phoneError != null)
+                    Text(
+                      phoneError!,
+                      style: TextStyle(color: Colors.red),
+                    ),
+                ],
+              ),
+              SizedBox(height: 16),
+
+              // Input para correo
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CustomTextInput(
+                    hintText: 'Correo',
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                  if (emailError != null)
+                    Text(
+                      emailError!,
+                      style: TextStyle(color: Colors.red),
+                    ),
+                ],
+              ),
+              SizedBox(height: 16),
+
+              // Input para lugar
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CustomTextInput(
+                    hintText: 'Lugar de residencia',
+                    controller: placeController,
+                    keyboardType: TextInputType.text,
+                  ),
+                  if (placeError != null)
+                    Text(
+                      placeError!,
+                      style: TextStyle(color: Colors.red),
+                    ),
+                ],
+              ),
+              SizedBox(height: 24),
+
+              // Opción para aceptar términos y condiciones
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Checkbox(
+                    value: acceptedTerms,
+                    onChanged: (value) {
+                      setState(() {
+                        acceptedTerms = value ?? false;
+                        termsError = null; // Limpiar el error al aceptar
+                      });
+                    },
+                    activeColor: Color(
+                        0xFF83B56A), // Cambiar color del checkbox al marcar
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      child: Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: 'Acepto ',
+                              style: TextStyle(
+                                color: Colors
+                                    .black, // Color normal para la parte introductoria
+                                fontSize: 14,
+                              ),
+                            ),
+                            TextSpan(
+                              text: 'términos y condiciones ',
+                              style: TextStyle(
+                                color: Color(0xFF83B56A),
+                                fontSize: 14,
+                                decoration:
+                                    TextDecoration.underline, // Subrayado
+                              ),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () {
+                                  // Navegar a los términos y condiciones
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          TermsAndConditionsScreen(),
+                                    ),
+                                  );
+                                },
+                            ),
+                            TextSpan(
+                              text: 'y la ',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 14,
+                              ),
+                            ),
+                            TextSpan(
+                              text: 'política de privacidad',
+                              style: TextStyle(
+                                color: Color(0xFF83B56A),
+                                fontSize: 14,
+                                decoration:
+                                    TextDecoration.underline, // Subrayado
+                              ),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () {
+                                  // Navegar a la política de privacidad
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          PrivacyPolicyScreen(),
+                                    ),
+                                  );
+                                },
+                            ),
+                          ],
+                        ),
+                        maxLines: 2, // Permitir hasta 2 líneas
+                        softWrap: true, // Habilitar el salto de línea
+                        overflow: TextOverflow
+                            .visible, // Mostrar todo el texto sin cortar
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (termsError != null)
+                Text(
+                  termsError!,
+                  style: TextStyle(color: Colors.red),
+                ),
+
+              SizedBox(height: 24),
+
+              // Botón "Regístrate"
+              CustomElevatedButton(
+                text: 'Registrar',
+                onPressed: () => registerUser(context),
+                width: 290,
+              ),
+              SizedBox(height: 5),
+
+              // Texto "Aún no tienes cuenta? Regístrate"
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Ya tengo una cuenta ',
+                    style: TextStyle(
+                      color: Color(0xFF7C7C7C),
+                      fontSize: 14,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => LoginScreen(),
+                        ),
+                      );
+                    },
+                    child: Text(
+                      'Inicia sesión',
+                      style: TextStyle(color: Color(0xFF83B56A)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class TermsAndConditionsScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Términos y condiciones'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Términos y condiciones...',
+                style: TextStyle(
+                    fontSize: 16,
+                    color: Color(0xFF000000)), // Cambiado a amarillo
+              ),
+              // Agrega más contenido aquí según sea necesario
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class PrivacyPolicyScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Politica y privacidad'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Términos y condiciones...',
+                style: TextStyle(
+                    fontSize: 16,
+                    color: Color(0xFF000000)), // Cambiado a amarillo
+              ),
+              // Agrega más contenido aquí según sea necesario
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
