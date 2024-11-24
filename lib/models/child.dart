@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 import 'users.dart';
 
 class Child {
@@ -9,33 +11,28 @@ class Child {
   final bool childGender; // true: Male, false: Female
   final double? childCurrentWeight;
   final double? childCurrentHeight;
-  final User user; // Relación con la clase User
 
-  Child({
-    required this.childId,
-    required this.childName,
-    required this.childLastName,
-    required this.childBirthDate, // Nuevo parámetro requerido
-    required this.childAgeMonth,
-    required this.childGender,
-    this.childCurrentWeight,
-    this.childCurrentHeight,
-    required this.user,
-  });
+  Child(
+      {required this.childId,
+      required this.childName,
+      required this.childLastName,
+      required this.childBirthDate, // Nuevo parámetro requerido
+      required this.childAgeMonth,
+      required this.childGender,
+      this.childCurrentWeight,
+      this.childCurrentHeight});
 
   factory Child.fromJson(Map<String, dynamic> json) {
     return Child(
-      childId: json['childId'],
-      childName: json['childName'],
-      childLastName: json['childLastName'],
-      childBirthDate:
-          DateTime.parse(json['birthDate']), // Convertir fecha de JSON
-      childAgeMonth: json['childAgeMonth'],
-      childGender: json['childGender'] == 1,
-      childCurrentWeight: json['childCurrentWeight'],
-      childCurrentHeight: json['childCurrentHeight'],
-      user: User.fromJson(json['user']),
-    );
+        childId: json['childId'],
+        childName: json['childName'],
+        childLastName: json['childLastName'],
+        childBirthDate:
+            DateTime.parse(json['childBirthDate']), // Convertir fecha de JSON
+        childAgeMonth: json['childAgeMonth'],
+        childGender: json['childGender'] == true,
+        childCurrentWeight: double.parse(json['childCurrentWeight']),
+        childCurrentHeight: double.parse(json['childCurrentHeight']));
   }
 
   Map<String, dynamic> toJson() {
@@ -43,13 +40,12 @@ class Child {
       'childId': childId,
       'childName': childName,
       'childLastName': childLastName,
-      'birthDate':
-          childBirthDate.toIso8601String(), // Almacenar fecha en formato ISO
+      'childBirthDate': DateFormat('yyyy-MM-dd')
+          .format(childBirthDate), // Almacenar fecha en formato ISO
       'childAgeMonth': childAgeMonth,
       'childGender': childGender ? 1 : 0,
       'childCurrentWeight': childCurrentWeight,
-      'childCurrentHeight': childCurrentHeight,
-      'user': user.toJson(),
+      'childCurrentHeight': childCurrentHeight
     };
   }
 }

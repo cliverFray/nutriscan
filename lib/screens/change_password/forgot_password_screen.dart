@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/user_service.dart';
 import '../../widgets/custom_elevated_buton.dart';
 import '../../widgets/custom_text_input.dart';
+import 'new_password_screen.dart';
 import 'otp_verification_screen.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -19,31 +20,45 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     String phone = phoneController.text;
 
     setState(() {
-      // Limpiar errores previos
       phoneError = null;
-
       if (phone.isEmpty || phone.length != 9) {
         phoneError = 'Por favor, introduce un número de teléfono válido.';
       }
     });
 
-    // Si no hay errores, proceder a enviar OTP
     if (phoneError == null) {
-      String? responseMessage = await _userService.sendPasswordResetOTP(phone);
+      String? responseMessage =
+          await _userService.requestPasswordResetCode(phone);
 
       if (responseMessage == null) {
-        // OTP enviado exitosamente, navegar a la pantalla de OTP
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => OtpVerificationScreen(),
+            builder: (context) => OtpVerificationScreen(
+              phone: phone,
+              onOtpVerified: () => _navigateToNewPasswordScreen(phone),
+              otpType: "password_reset",
+            ), // Pasar número de teléfono
           ),
         );
       } else {
-        // Mostrar error si falla el envío de OTP
         _showError(responseMessage);
       }
     }
+  }
+
+  // Función para navegar a la pantalla de cambio de contraseña después de verificar OTP
+  void _navigateToNewPasswordScreen(String phone) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => NewPasswordScreen(
+          phone: phone,
+          code:
+              "", // Si necesitas pasar el OTP verificado, se puede ajustar aquí
+        ),
+      ),
+    );
   }
 
   // Mostrar error en un diálogo

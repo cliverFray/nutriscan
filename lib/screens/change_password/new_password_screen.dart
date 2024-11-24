@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
+import '../../services/user_service.dart';
 import '../../widgets/custom_elevated_buton.dart';
 import '../../widgets/custom_text_input.dart';
+import '../login_screen.dart';
 
 class NewPasswordScreen extends StatefulWidget {
+  final String phone;
+  final String code;
+
+  NewPasswordScreen(
+      {required this.phone, required this.code}); // Constructor con parámetros
+
   @override
   _NewPasswordScreenState createState() => _NewPasswordScreenState();
 }
@@ -11,12 +19,14 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
   final TextEditingController newPasswordController = TextEditingController();
   final TextEditingController confirmPasswordController =
       TextEditingController();
+  final UserService _userService =
+      UserService(); // Instancia del servicio de usuario
   bool showNewPassword = false;
   bool showConfirmPassword = false;
   String? passwordError;
 
   // Función para validar y guardar la nueva contraseña
-  void _verifyAndSavePassword() {
+  void _verifyAndSavePassword() async {
     String newPassword = newPasswordController.text;
     String confirmPassword = confirmPasswordController.text;
 
@@ -29,8 +39,27 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
     });
 
     if (passwordError == null) {
-      // Guardar la nueva contraseña y navegar
-      Navigator.pop(context); // O puedes implementar lógica adicional aquí
+      String? result = await _userService.resetPassword(
+          widget.phone, widget.code, newPassword);
+
+      if (result == null) {
+        // Contraseña guardada exitosamente, regresar o mostrar mensaje de éxito
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Contraseña actualizada correctamente')),
+        );
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => LoginScreen(), // Pasar teléfono y código
+          ),
+        );
+      } else {
+        // Mostrar error si falla el cambio de contraseña
+        setState(() {
+          passwordError = result;
+        });
+      }
     }
   }
 
