@@ -1,23 +1,37 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 
 import '../widgets/custom_elevated_button_2.dart';
 import 'detection_history_screen.dart';
+import 'nutri_recom.dart';
 
 class ResultDetectionScreen extends StatelessWidget {
-  final String imagenAnalizadaUrl;
-  final String diagnostico;
-  final String recomendacionInmediata;
-  final bool esSaludable; // Determina si el resultado es saludable
+  final File imagenAnalizada;
+  final Map<String, String?> detectionData;
 
   ResultDetectionScreen({
-    required this.imagenAnalizadaUrl,
-    required this.diagnostico,
-    required this.recomendacionInmediata,
-    required this.esSaludable,
+    required this.imagenAnalizada,
+    required this.detectionData,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Extrae los valores de diagnóstico y recomendación desde detectionData
+    final String diagnostico =
+        detectionData['detectionResult'] ?? 'Diagnóstico desconocido';
+    final String recomendacionInmediata =
+        detectionData['immediateRecommendation'] ??
+            'No se encontró una recomendación.';
+    // Define el color y el estado de salud en base al diagnóstico
+    final Map<String, Color> diagnosticoColors = {
+      'Con desnutrición': Colors.red,
+      'Normal': Colors.green,
+      'Riesgo en desnutricion': Colors.orange,
+    };
+
+    final Color diagnosticoColor =
+        diagnosticoColors[diagnostico] ?? Colors.grey;
+
     return Scaffold(
       backgroundColor: Color(0xFFFFFFFF),
       appBar: AppBar(
@@ -37,8 +51,9 @@ class ResultDetectionScreen extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             SizedBox(height: 20),
-            Image.network(
-              imagenAnalizadaUrl,
+            // Muestra la imagen analizada
+            Image.file(
+              imagenAnalizada,
               height: 200,
               width: 200,
               fit: BoxFit.cover,
@@ -49,7 +64,7 @@ class ResultDetectionScreen extends StatelessWidget {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: esSaludable ? Colors.green : Colors.red,
+                color: diagnosticoColor,
               ),
               textAlign: TextAlign.center,
             ),
@@ -57,9 +72,8 @@ class ResultDetectionScreen extends StatelessWidget {
             Column(
               children: [
                 CategoryLabel('Saludable', Colors.green),
-                CategoryLabel('Obeso', Colors.orange),
-                CategoryLabel('Retraso en crecimiento', Colors.amber),
-                CategoryLabel('Desnutrición crónica', Colors.red),
+                CategoryLabel('Riesgos en Desnutrición', Colors.orange),
+                CategoryLabel('Con desnutrición', Colors.red),
               ],
             ),
             SizedBox(height: 20),
@@ -77,8 +91,13 @@ class ResultDetectionScreen extends StatelessWidget {
               child: CustomButton2(
                 buttonText: "Ver recomendaciones",
                 onPressed: () {
-                  // Acción para tomar o subir una foto
-                  // Navegación a la pantalla para tomar o subir una foto
+                  // Acción para ver historial
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) =>
+                            NutritionalRecommendationsScreen()),
+                  );
                 },
               ),
             ),

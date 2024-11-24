@@ -9,6 +9,8 @@ import '../widgets/custom_text_input.dart';
 import '../widgets/custom_title_text.dart';
 import '../widgets/name_app.dart';
 
+import 'change_password/otp_verification_screen.dart'; // Importar pantalla OTP
+
 class SignInScreen extends StatefulWidget {
   @override
   _SignInScreenState createState() => _SignInScreenState();
@@ -34,6 +36,7 @@ class _SignInScreenState extends State<SignInScreen> {
   String? placeError;
   bool acceptedTerms = false; // Estado para términos y condiciones
   String? termsError; // Mensaje de error para términos y condiciones
+  final UserService _userService = UserService(); // Instancia del servicio
 
   // Función para validar campos
   void validateFields() {
@@ -65,11 +68,10 @@ class _SignInScreenState extends State<SignInScreen> {
     });
   }
 
-  // Función para registrar usuario
-  Future<void> registerUser(BuildContext context) async {
+  // Nueva función para enviar el código de verificación de identidad
+  Future<void> _sendVerificationCode() async {
     validateFields();
 
-    // Verificar si hay errores antes de continuar
     if (nameError == null &&
         lastNameError == null &&
         passwordError == null &&
@@ -78,22 +80,46 @@ class _SignInScreenState extends State<SignInScreen> {
         emailError == null &&
         placeError == null &&
         termsError == null) {
-      User newUser = User(
-        userId: 0, // O un ID generado por el backend
-        userFirstName: namesController.text,
-        userLastName: lastNameController.text,
-        userPassword: passwordController.text,
-        userDNI: dniController.text,
-        userPhone: phoneController.text,
-        userEmail: emailController.text,
-        userRegistrationDate: DateTime.now(),
-        userPlace: placeController.text,
-      );
+      // Enviar código de verificación
+      String? responseMessage =
+          await _userService.sendVerificationCode(phoneController.text);
 
-      UserService us = UserService();
-      String? errorMessage = await us.registerUser(newUser);
-      if (errorMessage == null) {
-        // Registro exitoso
+      if (responseMessage == null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => OtpVerificationScreen(
+              phone: phoneController.text,
+              onOtpVerified: _registerAfterOtpVerification,
+              otpType: "identity_verification",
+            ),
+          ),
+        );
+      } else {
+        _showError(responseMessage);
+      }
+    }
+  }
+
+  // Función que se ejecuta cuando se verifica el OTP exitosamente
+  Future<void> _registerAfterOtpVerification() async {
+    User newUser = User(
+      userId: 0,
+      userFirstName: namesController.text,
+      userLastName: lastNameController.text,
+      userPassword: passwordController.text,
+      userDNI: dniController.text,
+      userPhone: phoneController.text,
+      userEmail: emailController.text,
+      userRegistrationDate: DateTime.now(),
+      userPlace: placeController.text,
+    );
+
+    String? registrationErrorMessage = await _userService.registerUser(newUser);
+    if (registrationErrorMessage == null) {
+      final String? loginError =
+          await _userService.loginUser(newUser.userPhone, newUser.userPassword);
+      if (loginError == null) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -101,26 +127,38 @@ class _SignInScreenState extends State<SignInScreen> {
           ),
         );
       } else {
-        // Mostrar el mensaje de error
-        showDialog(
-          context: context,
-          builder: (context) {
-            return AlertDialog(
-              title: Text('Error'),
-              content: Text(errorMessage),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop(); // Cierra el diálogo
-                  },
-                  child: Text('Cerrar'),
-                ),
-              ],
-            );
-          },
+        // Si el inicio de sesión falla, redirigimos al Login o mostramos un mensaje de error
+        _showError(loginError);
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => LoginScreen(),
+          ),
         );
       }
+    } else {
+      _showError(registrationErrorMessage);
     }
+  }
+
+  void _showError(String message) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Error'),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Cerrar'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -362,7 +400,7 @@ class _SignInScreenState extends State<SignInScreen> {
               // Botón "Regístrate"
               CustomElevatedButton(
                 text: 'Registrar',
-                onPressed: () => registerUser(context),
+                onPressed: _sendVerificationCode,
                 width: 290,
               ),
               SizedBox(height: 5),

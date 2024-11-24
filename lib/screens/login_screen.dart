@@ -49,7 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     UserService us = UserService();
     String? errorMessage = await us.loginUser(phone, password);
-    if (errorMessage != null) {
+    if (errorMessage == null) {
       //trampitar
       // Login exitoso
       Navigator.pushReplacement(

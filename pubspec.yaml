@@ -46,6 +46,9 @@ dependencies:
   flutter_charts: ^0.5.2
   dropdown_button2: ^2.3.9
   fl_chart: ^0.69.0
+  shared_preferences: ^2.3.2
+  carousel_slider: ^5.0.0
+  dio: ^5.7.0
 
 dev_dependencies:
   flutter_test:
@@ -56,7 +59,7 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^4.0.0
+  flutter_lints: ^5.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -75,6 +78,7 @@ flutter:
   - assets/images/foto_padre_niño.jpg
   - assets/images/desnjoe.jpg
   - assets/images/sanjuan.jpg
+  - assets/images/happyfamily.jpg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

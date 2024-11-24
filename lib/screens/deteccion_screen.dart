@@ -1,9 +1,24 @@
 import 'package:flutter/material.dart';
+import '../services/child_service.dart';
 import 'detection_history_screen.dart';
 import 'register_child_screen.dart';
 import 'take_or_pick_photo_screen.dart';
 
-class DeteccionScreen extends StatelessWidget {
+class DeteccionScreen extends StatefulWidget {
+  @override
+  _DeteccionScreenState createState() => _DeteccionScreenState();
+}
+
+class _DeteccionScreenState extends State<DeteccionScreen> {
+  List<Map<String, dynamic>> children = [];
+  bool isLoading = true;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _fetchChildrenNames();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -156,46 +171,67 @@ class DeteccionScreen extends StatelessWidget {
   }
 
   // Diálogo para seleccionar al niño
+  // Diálogo para seleccionar al niño
   void _showSelectChildDialog(BuildContext context) {
-    /* List<String> children = List.generate(
-        2, (index) => "Niño ${index + 1}"); // Simulación de la lista de niños
- */
-    List<String> children = [
-      "Juan",
-      "Joel",
-      "Gabo",
-    ];
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        String? selectedChild;
+        return FutureBuilder<List<Map<String, dynamic>>>(
+          future: _fetchChildrenNames(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return AlertDialog(
+                title: Text('Seleccione al niño'),
+                content: Center(child: CircularProgressIndicator()),
+              );
+            } else if (snapshot.hasError) {
+              return AlertDialog(
+                title: Text('Error'),
+                content: Text('Error al cargar los niños. Intenta nuevamente.'),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: Text("Cerrar"),
+                  ),
+                ],
+              );
+            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return AlertDialog(
+                title: Text('Sin niños registrados'),
+                content: Text(
+                    'No hay niños registrados. Registra un niño antes de continuar.'),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => RegisterChildScreen()),
+                      );
+                    },
+                    child: Text("Registrar"),
+                  ),
+                ],
+              );
+            } else {
+              List<Map<String, dynamic>> children = snapshot.data!;
+              Map<String, dynamic>? selectedChild;
 
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: Text('Seleccione al niño'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Lista desplegable con estilo y con límite de altura
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey),
-                      borderRadius: BorderRadius.circular(10.0),
-                    ),
-                    child: DropdownButtonFormField<String>(
+              return StatefulBuilder(
+                builder: (context, setState) {
+                  return AlertDialog(
+                    title: Text('Seleccione al niño'),
+                    content: DropdownButtonFormField<Map<String, dynamic>>(
                       hint: Text("Selecciona un niño"),
                       value: selectedChild,
                       isExpanded: true,
-                      decoration: InputDecoration(
-                        border:
-                            InputBorder.none, // Sin borde adicional en el campo
-                      ),
-                      items: children.map((String child) {
-                        return DropdownMenuItem<String>(
+                      items: children.map((child) {
+                        return DropdownMenuItem<Map<String, dynamic>>(
                           value: child,
-                          child: Text(child),
+                          child: Text(child['childName']),
                         );
                       }).toList(),
                       onChanged: (value) {
@@ -204,55 +240,48 @@ class DeteccionScreen extends StatelessWidget {
                         });
                       },
                     ),
-                  ),
-                  SizedBox(height: 10),
-                  if (children.isEmpty)
-                    Text(
-                      'No hay ningún niño registrado, Haga click en Continuar para registrar',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                ],
-              ),
-              actions: [
-                // Botón "Cancelar"
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: Text("Cancelar"),
-                ),
-                // Botón "Continuar"
-                TextButton(
-                  onPressed: () {
-                    if (selectedChild != null || children.isEmpty) {
-                      Navigator.of(context).pop();
-                      if (children.isNotEmpty) {
-                        // Navegación a la pantalla de tomar o subir foto
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => TakeOrPickPhotoScreen(),
-                          ),
-                        );
-                      } else {
-                        // Navegación a la pantalla de registrar niño
-                        // Agrega aquí la navegación que prefieras
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => RegisterChildScreen(),
-                          ),
-                        );
-                      }
-                    }
-                  },
-                  child: Text("Continuar"),
-                ),
-              ],
-            );
+                    actions: [
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                        child: Text("Cancelar"),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          if (selectedChild != null) {
+                            Navigator.of(context).pop();
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => TakeOrPickPhotoScreen(
+                                  childId: selectedChild?['childId'],
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                        child: Text("Continuar"),
+                      ),
+                    ],
+                  );
+                },
+              );
+            }
           },
         );
       },
     );
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchChildrenNames() async {
+    try {
+      final ChildService childService = ChildService();
+      final names = await childService.getChildrenNames();
+      return names;
+    } catch (e) {
+      print('Error al obtener los nombres: $e');
+      return [];
+    }
   }
 }

@@ -36,6 +36,21 @@ class User {
       userPlace: json['userPlace'],
     );
   }
+
+  // Método de factoría adicional para JSON anidado
+  factory User.fromNestedJson(Map<String, dynamic> json) {
+    return User(
+      userId: json['user']['username'],
+      userFirstName: json['user']['first_name'],
+      userLastName: json['user']['last_name'],
+      userPassword: json['user']['password'],
+      userDNI: json['userDNI'],
+      userPhone: json['userPhone'],
+      userEmail: json['user']['email'],
+      userRegistrationDate: DateTime.parse(json['user']['date_joined']),
+      userPlace: json['userPlace'],
+    );
+  }
   // Método para convertir el objeto a JSON
   Map<String, dynamic> toJson() {
     return {

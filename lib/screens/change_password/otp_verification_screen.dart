@@ -1,17 +1,30 @@
 import 'package:flutter/material.dart';
+import '../../services/user_service.dart';
 import '../../widgets/custom_elevated_buton.dart';
 import 'new_password_screen.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
+  final String phone; // Añadir el campo de teléfono
+  final void Function() onOtpVerified;
+  final String otpType; // Puede ser "identity_verification" o "password_reset"
+
+  OtpVerificationScreen({
+    required this.phone,
+    required this.onOtpVerified,
+    required this.otpType,
+  }); // Modificar constructor para aceptar teléfono
+
   @override
   _OtpVerificationScreenState createState() => _OtpVerificationScreenState();
 }
 
 class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
+  // Función para validar y verificar el OTP
   final List<TextEditingController> otpControllers = List.generate(
-    5,
+    6,
     (index) => TextEditingController(),
   );
+  final UserService _userService = UserService();
   String? otpError;
 
   // Función para validar y verificar el OTP
@@ -19,22 +32,61 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     String otp = otpControllers.map((controller) => controller.text).join();
 
     setState(() {
-      otpError = null; // Limpiar errores previos
+      otpError = null;
 
-      if (otp.length != 5) {
-        otpError = 'El código debe tener 5 dígitos.';
+      if (otp.length != 6) {
+        otpError = 'El código debe tener 6 dígitos.';
       }
     });
 
     if (otpError == null) {
-      // Navegar a la pantalla de nueva contraseña si el OTP es válido
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => NewPasswordScreen(),
-        ),
-      );
+      final verificationMethod = widget.otpType == "identity_verification"
+          ? _userService.verifyIdentityCode
+          : _userService.verifyPasswordResetCode;
+
+      verificationMethod(widget.phone, otp).then((result) {
+        if (result == null) {
+          if (widget.otpType == "password_reset") {
+            // Navegar a la pantalla de cambio de contraseña en caso de restablecimiento de contraseña
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => NewPasswordScreen(
+                  phone: widget.phone,
+                  code: otp, // Pasar el OTP verificado a la pantalla
+                ),
+              ),
+            );
+          } else {
+            // Ejecutar la función onOtpVerified para otros casos
+            widget.onOtpVerified();
+          }
+        } else {
+          setState(() {
+            otpError = result;
+          });
+        }
+      });
     }
+  }
+
+  // Función para reenviar el OTP según el tipo
+  void _resendOtp() {
+    final resendMethod = widget.otpType == "identity_verification"
+        ? _userService.resendIdentityVerificationCode
+        : _userService.resendPasswordResetCode;
+
+    resendMethod(widget.phone).then((result) {
+      if (result != null) {
+        setState(() {
+          otpError = result;
+        });
+      } else {
+        setState(() {
+          otpError = 'Nuevo código enviado exitosamente.';
+        });
+      }
+    });
   }
 
   // Widget para crear un campo individual del OTP
@@ -42,7 +94,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     return Container(
       width: 50,
       height: 60,
-      margin: EdgeInsets.symmetric(horizontal: 8),
+      margin: EdgeInsets.symmetric(horizontal: 4),
       child: TextField(
         controller: otpControllers[index],
         decoration: InputDecoration(
@@ -54,7 +106,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         textAlign: TextAlign.center,
         maxLength: 1, // Limitar a 1 dígito por campo
         onChanged: (value) {
-          if (value.isNotEmpty && index < 4) {
+          if (value.isNotEmpty && index < 5) {
             FocusScope.of(context).nextFocus(); // Ir al siguiente campo
           }
         },
@@ -80,7 +132,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             children: [
               SizedBox(height: 16),
               Text(
-                'Hemos enviado el código de 5 dígitos por SMS',
+                'Hemos enviado el código de 6 dígitos por SMS',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -92,7 +144,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               // Cuadros de entrada para OTP
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(5, (index) => _buildOtpField(index)),
+                children: List.generate(6, (index) => _buildOtpField(index)),
               ),
               if (otpError != null) ...[
                 SizedBox(height: 8),
@@ -113,10 +165,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 ),
               ),
               TextButton(
-                onPressed: () {
-                  // Acción para reenviar OTP
-                  // Implementa la lógica de reenvío aquí
-                },
+                onPressed: _resendOtp, // Llama al método de reenvío,
                 child: Text('Reenviar Código'),
                 style: ButtonStyle(
                   foregroundColor:

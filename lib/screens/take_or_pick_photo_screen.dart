@@ -1,18 +1,18 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:nutriscan/models/users.dart';
-import 'package:nutriscan/services/upload_image_service.dart';
-import 'package:nutriscan/services/user_service.dart';
-
+import '../services/validate_image.dart'; // Importa el servicio de validación
+import '../services/detection_service.dart'; // Importa el servicio de detección
+import 'result_detection_screen.dart';
 import '../widgets/custom_button_icon.dart';
 import '../widgets/custom_elevated_button_2.dart';
-import 'result_detection_screen.dart';
-
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:path/path.dart' as path;
+import '../models/malnutrition_detection.dart';
 
 class TakeOrPickPhotoScreen extends StatefulWidget {
+  final int childId;
+
+  TakeOrPickPhotoScreen({required this.childId});
+
   @override
   _TakeOrPickPhotoScreenState createState() => _TakeOrPickPhotoScreenState();
 }
@@ -20,6 +20,10 @@ class TakeOrPickPhotoScreen extends StatefulWidget {
 class _TakeOrPickPhotoScreenState extends State<TakeOrPickPhotoScreen> {
   File? _image;
   final ImagePicker _picker = ImagePicker();
+  final ImageValidationService _imageValidationService =
+      ImageValidationService(); // Instancia del servicio de validación
+  final DetectionService _detectionService =
+      DetectionService(); // Instancia del servicio de detección
 
   // Método para tomar una foto con la cámara
   Future<void> _takePhoto() async {
@@ -28,7 +32,7 @@ class _TakeOrPickPhotoScreenState extends State<TakeOrPickPhotoScreen> {
       setState(() {
         _image = File(pickedFile.path);
       });
-      _validateImage(_image!);
+      _validateAndCheckImage(_image!);
     }
   }
 
@@ -39,22 +43,23 @@ class _TakeOrPickPhotoScreenState extends State<TakeOrPickPhotoScreen> {
       setState(() {
         _image = File(pickedFile.path);
       });
-      _validateImage(_image!);
+      _validateAndCheckImage(_image!);
     }
   }
 
-  // Simulación de validación de imagen
-  void _validateImage(File image) {
-    // Simulación de validaciones: En este ejemplo verificamos solo el tamaño del archivo
-    final imageSize = image.lengthSync();
-    final maxImageSize = 5 * 1024 * 1024; // 5MB como tamaño máximo
+  // Método para validar la imagen usando el servicio
+  Future<void> _validateAndCheckImage(File image) async {
+    final validationResult = await _imageValidationService.validateImage(image);
 
-    if (imageSize > maxImageSize) {
-      _showSnackBar(
-        'La imagen es muy grande. Selecciona una más pequeña.',
-        isError: true,
-      );
+    if (!validationResult['valid']) {
+      // Si la imagen no es válida, muestra el mensaje de error
+      _showSnackBar(validationResult['message'], isError: true);
+      setState(() {
+        _image =
+            null; // Reinicia la imagen para que el usuario vuelva a intentar
+      });
     } else {
+      // Si la imagen es válida, permite continuar
       _showSnackBar('Imagen válida. Puedes continuar.', isError: false);
     }
   }
@@ -68,6 +73,64 @@ class _TakeOrPickPhotoScreenState extends State<TakeOrPickPhotoScreen> {
         duration: Duration(seconds: 3),
       ),
     );
+  }
+
+  // Método para mostrar el indicador de carga
+  Future<void> _showLoadingDialog() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 16),
+                Text("Procesando..."),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Método para subir la imagen al endpoint de detección
+  Future<void> _uploadImage(File image) async {
+    // Mostrar indicador de carga
+    _showLoadingDialog();
+    // Llama al servicio de detección con el ID del niño y la imagen validada
+    try {
+      final detectionResult = await _detectionService.uploadDetectionImage(
+          childId: widget.childId, image: image);
+
+      // Cierra el indicador de carga
+      Navigator.pop(context);
+
+      if (detectionResult != null) {
+        // Si la detección fue exitosa, navega a la pantalla de resultados
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ResultDetectionScreen(
+              imagenAnalizada: image,
+              detectionData: detectionResult,
+            ),
+          ),
+        );
+      } else {
+        // Si la subida falla, muestra un mensaje de error
+        _showSnackBar('Error al subir la imagen para detección.',
+            isError: true);
+      }
+    } catch (e) {
+      // Cierra el indicador de carga en caso de error
+      Navigator.pop(context);
+      _showSnackBar('Error al procesar la imagen: $e', isError: true);
+    }
   }
 
   @override
@@ -145,40 +208,26 @@ class _TakeOrPickPhotoScreenState extends State<TakeOrPickPhotoScreen> {
               Center(
                 child: CustomButton2(
                   onPressed: () async {
-                    // Esperar a que se obtenga el usuario actual de manera asíncrona
-                    User? user = await UserService().getCurrentUser();
+                    // Validar y subir la imagen si cumple con los requisitos
+                    final validationResult =
+                        await _imageValidationService.validateImage(_image!);
 
-                    if (user != null) {
-                      // Subir la imagen si se obtuvo el usuario
-                      final uploaded = await uploadImageAsPng2(_image!, user);
-
-                      if (uploaded.isNotEmpty) {
-                        _showSnackBar(
-                          'Foto subida correctamente. Ahora puedes continuar.',
-                          isError: false,
-                        );
-                        // Navegación a la pantalla de resultados con la URL de la imagen
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ResultDetectionScreen(
-                                imagenAnalizadaUrl: uploaded,
-                                diagnostico: "Sano",
-                                recomendacionInmediata:
-                                    "El niño está saludable. Continúe con los buenos hábitos alimenticios.",
-                                esSaludable: true),
-                          ),
-                        );
-                      } else {
-                        _showSnackBar('Error al subir la foto.', isError: true);
-                      }
+                    if (validationResult['valid']) {
+                      // Si la imagen es válida, procede a subirla
+                      await _uploadImage(_image!);
                     } else {
-                      _showSnackBar('Error al obtener usuario.', isError: true);
+                      _showSnackBar(
+                        validationResult['message'],
+                        isError: true,
+                      );
+                      setState(() {
+                        _image = null; // Reinicia la imagen si no es válida
+                      });
                     }
                   },
-                  buttonText: "Subir foto",
+                  buttonText: "Validar y Subir Foto",
                 ),
-              )
+              ),
           ],
         ),
       ),

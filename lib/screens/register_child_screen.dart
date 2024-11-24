@@ -68,6 +68,8 @@ class _RegisterChildScreenState extends State<RegisterChildScreen> {
     String weight = weightController.text;
     String height = heightController.text;
 
+    print('Register button pressed');
+
     setState(() {
       // Limpiar errores previos
       nameError = null;
@@ -87,26 +89,18 @@ class _RegisterChildScreenState extends State<RegisterChildScreen> {
 
     // Si no hay errores en los campos obligatorios
     if (nameError == null && lastNameError == null && birthDateError == null) {
-      // Obtener el usuario actual (esperar a que el Future se resuelva)
-      User? currentUser = await _getCurrentUser();
-      if (currentUser == null) {
-        // Si no se pudo obtener el usuario, mostrar un error y salir
-        _showError('No se pudo obtener el usuario actual.');
-        return;
-      }
-      DateTime parsedBirthDate =
-          DateFormat('dd/MM/yyyy', 'es_PE').parse(birthDate);
+      DateTime parsedDate = DateFormat('dd/MM/yyyy', 'es_PE').parse(birthDate);
+      String formattedBirthDate = DateFormat('yyyy-MM-dd').format(parsedDate);
       // Convertir los datos en el modelo Child
       Child newChild = Child(
         childId: 0, // Dependerá del backend asignar un ID al nuevo registro
         childName: names,
         childLastName: lastName,
-        childBirthDate: parsedBirthDate, // Almacenar la fecha de nacimiento
+        childBirthDate: DateTime.parse(formattedBirthDate), // Almacena la fecha
         childAgeMonth: _calculateAgeInMonths(birthDate),
         childGender: _selectedGender == 'Masculino',
         childCurrentWeight: weight.isEmpty ? null : double.parse(weight),
         childCurrentHeight: height.isEmpty ? null : double.parse(height),
-        user: currentUser, // Aquí ya puedes pasar el usuario
       );
 
       // Llamar al servicio para registrar al niño
@@ -115,12 +109,6 @@ class _RegisterChildScreenState extends State<RegisterChildScreen> {
       if (responseMessage == null) {
         // Registro exitoso, mostrar mensaje y navegar
         _showSuccess();
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => BottomNavMenu(),
-          ),
-        );
       } else {
         // Muestra el error si falla
         _showError(responseMessage);
@@ -137,18 +125,6 @@ class _RegisterChildScreenState extends State<RegisterChildScreen> {
     return ageMonths;
   }
 
-  // Función para obtener el usuario actual
-  Future<User?> _getCurrentUser() async {
-    User? currentUser = await _userService.getCurrentUser();
-    if (currentUser != null) {
-      return currentUser;
-    } else {
-      // Manejar el caso en que no haya un usuario logueado
-      _showError('No se pudo obtener la información del usuario.');
-      return null;
-    }
-  }
-
   // Mostrar error en un diálogo
   void _showError(String message) {
     showDialog(
@@ -160,6 +136,8 @@ class _RegisterChildScreenState extends State<RegisterChildScreen> {
           actions: [
             TextButton(
               onPressed: () {
+                Navigator.of(context).pop();
+
                 Navigator.of(context).pop();
               },
               child: Text('Cerrar'),
@@ -181,6 +159,8 @@ class _RegisterChildScreenState extends State<RegisterChildScreen> {
           actions: [
             TextButton(
               onPressed: () {
+                Navigator.of(context).pop();
+
                 Navigator.of(context).pop();
               },
               child: Text('Cerrar'),
