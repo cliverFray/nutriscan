@@ -82,7 +82,7 @@ class _NutritionalTermsScreenState
                 height: 80, width: 80, fit: BoxFit.cover),
             SizedBox(height: 10),
             Text(
-              utf8.decode(term.name.runes.toList()),
+              term.name,
               style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -90,12 +90,12 @@ class _NutritionalTermsScreenState
             ),
             SizedBox(height: 8),
             Text(
-              utf8.decode(term.description.runes.toList()),
+              term.description,
               style: TextStyle(fontSize: 14, color: Colors.black),
             ),
             SizedBox(height: 8),
             Text(
-              "Ejemplos: ${utf8.decode(term.examples.runes.toList())}",
+              "Ejemplos: ${term.examples}",
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ],

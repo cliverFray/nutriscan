@@ -1,3 +1,5 @@
+import 'package:dio/dio.dart';
+
 import '../models/child.dart';
 import '../utils/base_url_back_ns.dart';
 
@@ -5,14 +7,15 @@ import '../utils/dio_client.dart';
 
 class ChildService {
   final String baseUrl = BaseUrlBackNs.baseUrl; // URL base de la API
-  late final DioClient dioClient;
+  late Dio dioClient;
   ChildService() {
-    dioClient = DioClient(baseUrl); // Aquí puedes usar baseUrl
+    dioClient = Dio(BaseOptions(baseUrl: baseUrl));
+    dioClient.interceptors.add(AuthInterceptor(dioClient, baseUrl));
   }
   // Método para registrar un niño
   Future<String?> registerChild(Child child) async {
     try {
-      final response = await dioClient.dio.post(
+      final response = await dioClient.post(
         '/child/register/',
         data: child.toJson(),
       );
@@ -31,7 +34,7 @@ class ChildService {
   // Método para obtener la lista de niños de un usuario
   Future<List<Child>> getChildren() async {
     try {
-      final response = await dioClient.dio.get('/children/');
+      final response = await dioClient.get('/children/');
 
       if (response.statusCode == 200) {
         final List<dynamic> jsonResponse = response.data;
@@ -49,7 +52,7 @@ class ChildService {
   // Método para obtener los nombres de los niños
   Future<List<Map<String, dynamic>>> getChildrenNames() async {
     try {
-      final response = await dioClient.dio.get('/children/names/');
+      final response = await dioClient.get('/children/names/');
 
       if (response.statusCode == 200) {
         final List<dynamic> jsonResponse = response.data;
@@ -70,7 +73,7 @@ class ChildService {
   // Método para eliminar un niño
   Future<void> deleteChild(int id) async {
     try {
-      final response = await dioClient.dio.delete('/children/$id/');
+      final response = await dioClient.delete('/children/$id/');
 
       if (response.statusCode != 204) {
         throw Exception('Error al eliminar el niño');
@@ -83,7 +86,7 @@ class ChildService {
   // Método para obtener detalles de un niño por ID
   Future<Child?> getChildById(int childId) async {
     try {
-      final response = await dioClient.dio.get('/children/$childId/');
+      final response = await dioClient.get('/children/$childId/');
 
       if (response.statusCode == 200) {
         return Child.fromJson(response.data);
@@ -98,7 +101,7 @@ class ChildService {
   // Método para actualizar información de un niño
   Future<String?> updateChild(Child child) async {
     try {
-      final response = await dioClient.dio.put(
+      final response = await dioClient.put(
         '/child/update/${child.childId}/',
         data: child.toJson(),
       );

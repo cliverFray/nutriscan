@@ -1,12 +1,15 @@
+import 'package:dio/dio.dart';
+
 import '../utils/base_url_back_ns.dart';
 import '../utils/dio_client.dart';
 
 class ImageService {
   // URL base de tu API, puedes cambiarlo según tu configuración
   final String baseUrl = BaseUrlBackNs.baseUrl; // URL base de la API
-  late final DioClient dioClient;
+  late Dio dioClient;
   ImageService() {
-    dioClient = DioClient(baseUrl); // Aquí puedes usar baseUrl
+    dioClient = Dio(BaseOptions(baseUrl: baseUrl));
+    dioClient.interceptors.add(AuthInterceptor(dioClient, baseUrl));
   }
 
   // Método para obtener la URL firmada de la imagen
@@ -19,7 +22,7 @@ class ImageService {
     try {
       // Realiza la solicitud GET al endpoint para obtener la URL firmada
       final response =
-          await dioClient.dio.get('/generate_presigned_url/$detectionId/');
+          await dioClient.get('/generate_presigned_url/$detectionId/');
 
       if (response.statusCode == 200) {
         // Extrae la URL de la respuesta
