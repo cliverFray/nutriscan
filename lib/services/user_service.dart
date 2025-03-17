@@ -1,3 +1,5 @@
+import 'package:dio/dio.dart';
+
 import '../models/user_update.dart';
 import '../models/users.dart';
 import '../models/user_profile.dart';
@@ -8,16 +10,17 @@ import '../utils/dio_client.dart';
 
 class UserService {
   final String baseUrl = BaseUrlBackNs.baseUrl; // URL base de la API
-  late final DioClient dioClient;
+  late Dio dioClient;
   UserService() {
-    dioClient = DioClient(baseUrl); // Aquí puedes usar baseUrl
+    dioClient = Dio(BaseOptions(baseUrl: baseUrl));
+    dioClient.interceptors.add(AuthInterceptor(dioClient, baseUrl));
   }
 
   // Método para registrar un usuario
   // Método para registrar un usuario
   Future<String?> registerUser(User user) async {
     try {
-      final response = await dioClient.dio.post(
+      final response = await dioClient.post(
         '/register/',
         data: {
           'user': {
@@ -49,17 +52,26 @@ class UserService {
   // Método para iniciar sesión y guardar tokens
   Future<String?> loginUser(String phone, String password) async {
     try {
-      final response = await dioClient.dio.post(
+      print("Iniciando petición de login...");
+      print("URL base: ${dioClient.options.baseUrl}");
+      print("Endpoint: /login/");
+      print("Datos enviados: phone=$phone, password=$password");
+      final response = await dioClient.post(
         '/login/',
         data: {
           'userPhone': phone,
           'password': password,
         },
       );
+      print("REaliza la peticioin");
 
       if (response.statusCode == 200) {
         final data = response.data;
-        await _saveTokens(data['access'], data['refresh']);
+        if (data.containsKey('access') && data.containsKey('refresh')) {
+          await _saveTokens(data['access'], data['refresh']);
+        } else {
+          throw Exception('Respuesta del servidor sin tokens válidos.');
+        }
         return null; // Inicio de sesión exitoso
       } else {
         return 'Failed to login: ${response.statusCode}';
@@ -71,9 +83,14 @@ class UserService {
 
   // Método privado para guardar tokens en SharedPreferences
   Future<void> _saveTokens(String accessToken, String refreshToken) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('access_token', accessToken);
-    await prefs.setString('refresh_token', refreshToken);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('access_token', accessToken);
+      await prefs.setString('refresh_token', refreshToken);
+      await prefs.setBool('isLoggedIn', true);
+    } catch (e) {
+      throw Exception("Error al guardar los tokens: $e");
+    }
   }
 
   // Método para obtener el token de acceso
@@ -85,7 +102,7 @@ class UserService {
   // Método para obtener el perfil del usuario autenticado
   Future<UserProfile?> getUserProfile() async {
     try {
-      final response = await dioClient.dio
+      final response = await dioClient
           .get('/user/profile/'); // Solo pasas el endpoint relativo
 
       if (response.statusCode == 200) {
@@ -103,7 +120,7 @@ class UserService {
   Future<UserUpdate?> getUserProfileForUpdate() async {
     try {
       // Realiza la solicitud GET al endpoint relativo
-      final response = await dioClient.dio.get('/user/update-info/');
+      final response = await dioClient.get('/user/update-info/');
 
       // Verifica el código de estado
       if (response.statusCode == 200) {
@@ -126,7 +143,7 @@ class UserService {
   Future<bool> updateUserProfile(UserUpdate user) async {
     try {
       // Realiza la solicitud PUT al endpoint relativo
-      final response = await dioClient.dio.put(
+      final response = await dioClient.put(
         '/user/update/',
         data: {
           'user': {
@@ -154,7 +171,7 @@ class UserService {
   // Método para solicitar el código de restablecimiento de contraseña
   Future<String?> requestPasswordResetCode(String phone) async {
     try {
-      final response = await dioClient.dio.post(
+      final response = await dioClient.post(
         '/password-reset/request/',
         data: {'phone': phone},
       );
@@ -172,7 +189,7 @@ class UserService {
   // Método para verificar el código de restablecimiento de contraseña
   Future<String?> verifyPasswordResetCode(String phone, String code) async {
     try {
-      final response = await dioClient.dio.post(
+      final response = await dioClient.post(
         '/password-reset/verify/',
         data: {'phone': phone, 'code': code},
       );
@@ -190,7 +207,7 @@ class UserService {
   // Método para reenviar el código de restablecimiento de contraseña
   Future<String?> resendPasswordResetCode(String phone) async {
     try {
-      final response = await dioClient.dio.post(
+      final response = await dioClient.post(
         '/password-reset/resend/',
         data: {'phone': phone},
       );
@@ -209,7 +226,7 @@ class UserService {
   Future<String?> resetPassword(
       String phone, String code, String newPassword) async {
     try {
-      final response = await dioClient.dio.post(
+      final response = await dioClient.post(
         '/password-reset/reset/',
         data: {
           'phone': phone,
@@ -233,7 +250,7 @@ class UserService {
   // Método para enviar el código de verificación de identidad
   Future<String?> sendVerificationCode(String phone) async {
     try {
-      final response = await dioClient.dio.post(
+      final response = await dioClient.post(
         '/verification/generate-send-code/',
         data: {'phone': phone},
       );
@@ -259,7 +276,7 @@ class UserService {
   // Método para verificar el código de identidad
   Future<String?> verifyIdentityCode(String phone, String code) async {
     try {
-      final response = await dioClient.dio.post(
+      final response = await dioClient.post(
         '/verification/verify-code/',
         data: {'phone': phone, 'code': code},
       );
@@ -278,7 +295,7 @@ class UserService {
   // Método para reenviar el código de verificación de identidad
   Future<String?> resendIdentityVerificationCode(String phone) async {
     try {
-      final response = await dioClient.dio.post(
+      final response = await dioClient.post(
         '/verification/resend-code/',
         data: {'phone': phone},
       );
@@ -297,7 +314,7 @@ class UserService {
   // Método para obtener lista de hijos
   Future<List> fetchChildren() async {
     try {
-      final response = await dioClient.dio.get('/children/');
+      final response = await dioClient.get('/children/');
 
       if (response.statusCode == 200) {
         return response.data as List; // Devuelve la lista de hijos
@@ -315,11 +332,12 @@ class UserService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('access_token');
     await prefs.remove('refresh_token');
+    await prefs.setBool('isLoggedIn', false);
   }
 
   Future<String?> deleteAccount(String password) async {
     try {
-      final response = await dioClient.dio.delete(
+      final response = await dioClient.delete(
         '/account/delete/',
         data: {'password': password}, // El cuerpo se envía en el campo `data`
       );

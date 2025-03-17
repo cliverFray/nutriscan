@@ -120,7 +120,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     SizedBox(height: 10),
                     Text(
-                      utf8.decode(tip.title.runes.toList()),
+                      tip.title,
                       style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -128,7 +128,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     SizedBox(height: 10),
                     Text(
-                      utf8.decode(tip.description.runes.toList()),
+                      tip.description,
                       style: TextStyle(fontSize: 14, color: Colors.white70),
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,

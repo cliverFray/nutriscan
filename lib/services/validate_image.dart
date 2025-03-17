@@ -6,9 +6,10 @@ import '../utils/dio_client.dart';
 
 class ImageValidationService {
   final String baseUrl = BaseUrlBackNs.baseUrl; // URL base de la API
-  late final DioClient dioClient;
+  late Dio dioClient;
   ImageValidationService() {
-    dioClient = DioClient(baseUrl); // Aquí puedes usar baseUrl
+    dioClient = Dio(BaseOptions(baseUrl: baseUrl));
+    dioClient.interceptors.add(AuthInterceptor(dioClient, baseUrl));
   }
   final CompressImage _compressImage = CompressImage();
 
@@ -24,7 +25,7 @@ class ImageValidationService {
       });
 
       // Realiza la solicitud POST al endpoint para validar la imagen
-      final response = await dioClient.dio.post(
+      final response = await dioClient.post(
         '/validate-image/',
         data: formData,
         options: Options(headers: {'Content-Type': 'multipart/form-data'}),

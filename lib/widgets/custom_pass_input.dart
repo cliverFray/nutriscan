@@ -1,36 +1,39 @@
 import 'package:flutter/material.dart';
 
-class CustomTextInput extends StatelessWidget {
+class PasswordInputWidget extends StatelessWidget {
   final String hintText;
-  final bool isPassword;
   final TextEditingController controller;
-  final TextInputType keyboardType;
-  final Icon? suffixIcon; // Parámetro opcional para el ícono
-  final VoidCallback? onTap; // Parámetro opcional para el evento onTap
+  final bool isPasswordVisible;
+  final VoidCallback togglePasswordVisibility;
+  final VoidCallback? onTap;
 
-  const CustomTextInput({
+  const PasswordInputWidget({
     Key? key,
     required this.hintText,
-    this.isPassword = false,
     required this.controller,
-    this.keyboardType = TextInputType.text,
-    this.suffixIcon, // Se agrega el parámetro
-    this.onTap, // Se agrega el parámetro onTap
+    required this.isPasswordVisible,
+    required this.togglePasswordVisibility,
+    this.onTap,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
-      obscureText: isPassword,
-      keyboardType: keyboardType,
-      onTap: onTap, // Se agrega el evento onTap
+      keyboardType: TextInputType.text,
+      obscureText: !isPasswordVisible,
       cursorColor: Colors.black, // Color del palito de texto
       decoration: InputDecoration(
         hintText: hintText,
-        hintStyle: const TextStyle(color: Color(0xFF666666)),
         fillColor: const Color(0xFFF4F4F4),
         filled: true,
+        suffixIcon: IconButton(
+          icon: Icon(
+            isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+            color: Color(0xFF83B56A),
+          ),
+          onPressed: togglePasswordVisibility,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
         ),
@@ -42,8 +45,8 @@ class CustomTextInput extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Colors.green, width: 2),
         ),
-        suffixIcon: suffixIcon, // Se añade el ícono a la decoración
       ),
+      onTap: onTap,
     );
   }
 }

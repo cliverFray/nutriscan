@@ -8,9 +8,10 @@ import '../utils/dio_client.dart';
 
 class DetectionService {
   final String baseUrl = BaseUrlBackNs.baseUrl; // URL base de la API
-  late final DioClient dioClient;
+  late Dio dioClient;
   DetectionService() {
-    dioClient = DioClient(baseUrl); // Aquí puedes usar baseUrl
+    dioClient = Dio(BaseOptions(baseUrl: baseUrl));
+    dioClient.interceptors.add(AuthInterceptor(dioClient, baseUrl));
   }
   final CompressImage _compressImage = CompressImage();
   // Método para subir imagen de detección
@@ -30,7 +31,7 @@ class DetectionService {
       });
 
       // Realiza la solicitud POST al endpoint correspondiente
-      final response = await dioClient.dio.post(
+      final response = await dioClient.post(
         '/detections/upload/$childId/',
         data: formData,
         options: Options(headers: {'Content-Type': 'multipart/form-data'}),
@@ -56,7 +57,7 @@ class DetectionService {
   Future<List<DetectionHistory>> fetchDetectionHistory() async {
     try {
       // Realiza la solicitud GET al endpoint del historial
-      final response = await dioClient.dio.get('/detections/history/');
+      final response = await dioClient.get('/detections/history/');
 
       if (response.statusCode == 200) {
         final List<dynamic> jsonData = response.data;

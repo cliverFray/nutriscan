@@ -91,9 +91,9 @@ class _DetectionHistoryScreenState extends State<DetectionHistoryScreen> {
                 itemCount: filteredDetections.length,
                 itemBuilder: (context, index) {
                   final detection = filteredDetections[index];
-                  final Color cardColor = diagnosticoColors[utf8
-                          .decode(detection.detectionResult.runes.toList())] ??
-                      Colors.grey;
+                  final Color cardColor =
+                      diagnosticoColors[detection.detectionResult] ??
+                          Colors.grey;
 
                   return Card(
                     color: cardColor,
@@ -137,7 +137,7 @@ class _DetectionHistoryScreenState extends State<DetectionHistoryScreen> {
                                           fontSize: 16, color: Colors.white70),
                                     ),
                                     Text(
-                                      'Resultado: ${utf8.decode(detection.detectionResult.runes.toList())}',
+                                      'Resultado: ${detection.detectionResult}',
                                       style: TextStyle(
                                           fontSize: 16, color: Colors.white),
                                     ),
@@ -200,8 +200,7 @@ class _DetectionHistoryScreenState extends State<DetectionHistoryScreen> {
               SizedBox(height: 16),
               Text('Nombre: ${detection.childName}'),
               Text('Fecha: ${detection.detectionDate}'),
-              Text(
-                  'Resultado: ${utf8.decode(detection.detectionResult.runes.toList())}'),
+              Text('Resultado: ${detection.detectionResult}'),
             ],
           ),
           actions: [
