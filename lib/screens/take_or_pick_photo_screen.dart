@@ -11,7 +11,15 @@ import '../models/malnutrition_detection.dart';
 class TakeOrPickPhotoScreen extends StatefulWidget {
   final int childId;
 
-  TakeOrPickPhotoScreen({required this.childId});
+  const TakeOrPickPhotoScreen({Key? key, required this.childId})
+      : super(key: key);
+
+  // Método para recibir datos usando `arguments`
+  static TakeOrPickPhotoScreen fromArguments(Map<String, dynamic> args) {
+    return TakeOrPickPhotoScreen(
+      childId: args['childId'] as int,
+    );
+  }
 
   @override
   _TakeOrPickPhotoScreenState createState() => _TakeOrPickPhotoScreenState();

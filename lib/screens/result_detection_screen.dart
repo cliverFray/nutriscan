@@ -9,10 +9,18 @@ class ResultDetectionScreen extends StatelessWidget {
   final File imagenAnalizada;
   final Map<String, String?> detectionData;
 
-  ResultDetectionScreen({
+  const ResultDetectionScreen({
+    Key? key,
     required this.imagenAnalizada,
     required this.detectionData,
-  });
+  }) : super(key: key);
+
+  static ResultDetectionScreen fromArguments(Map<String, dynamic> args) {
+    return ResultDetectionScreen(
+      imagenAnalizada: args['imagenAnalizada'] as File,
+      detectionData: args['detectionData'] as Map<String, String?>,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {

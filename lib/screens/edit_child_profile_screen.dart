@@ -9,7 +9,15 @@ import '../widgets/custom_text_input.dart';
 class EditChildProfileScreen extends StatefulWidget {
   final int childId; // Solo el ID del niño para editar
 
-  EditChildProfileScreen({required this.childId});
+  const EditChildProfileScreen({Key? key, required this.childId})
+      : super(key: key);
+
+  // Método para obtener datos desde `arguments`
+  static EditChildProfileScreen fromArguments(Map<String, dynamic> args) {
+    return EditChildProfileScreen(
+      childId: args['childId'] as int,
+    );
+  }
 
   @override
   _EditChildProfileScreenState createState() => _EditChildProfileScreenState();

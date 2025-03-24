@@ -206,14 +206,29 @@ class _ManageChildProfileScreenState extends State<ManageChildProfileScreen> {
               ),
               child: IconButton(
                 icon: Icon(Icons.edit, color: Colors.white),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          EditChildProfileScreen(childId: child.childId),
-                    ),
-                  ).then((_) => _loadChildren());
+                onPressed: () async {
+                  if (child.childId != null) {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            EditChildProfileScreen(childId: child.childId),
+                      ),
+                    );
+
+                    if (result == true) {
+                      // Recargar datos solo si hubo cambios
+                      await _loadChildren();
+                    }
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content:
+                            Text('Error: No se pudo encontrar el ID del niño'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
                 },
               ),
             ),

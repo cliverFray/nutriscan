@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../services/static_info.dart';
+
 class FeedbackScreen extends StatelessWidget {
   final TextEditingController feedbackController = TextEditingController();
+  final StaticInfoService feedbackService = StaticInfoService();
 
   @override
   Widget build(BuildContext context) {
@@ -25,10 +28,10 @@ class FeedbackScreen extends StatelessWidget {
             ),
             SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () {
-                // Aquí envías el comentario al servidor
+              onPressed: () async {
                 String feedback = feedbackController.text;
                 if (feedback.isNotEmpty) {
+                  await feedbackService.sendFeedback(feedback);
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                     content: Text('Gracias por tu retroalimentación.'),
                   ));
