@@ -6,7 +6,7 @@ import '../services/user_service.dart';
 import '../widgets/custom_title_text.dart';
 import 'edit_user_profile_screen.dart';
 import 'login_screen.dart';
-import 'profile_settings_screen.dart';
+
 import 'register_child_screen.dart';
 import 'manage_child_profile_screen.dart';
 import 'settings_screen.dart';

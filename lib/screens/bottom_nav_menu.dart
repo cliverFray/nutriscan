@@ -18,7 +18,6 @@ class _BottomNavMenuState extends State<BottomNavMenu> {
     HomeScreen(),
     DeteccionScreen(),
     NutritionalRecommendationsScreen(),
-    AsistenteVirtualScreen(),
     PerfilScreen(),
   ];
 
@@ -68,11 +67,12 @@ class _BottomNavMenuState extends State<BottomNavMenu> {
           BottomNavigationBarItem(
             icon: Icon(Icons.local_dining),
             label: 'Recomendaciones',
-          ),
+          ) /* ,
           BottomNavigationBarItem(
             icon: Icon(Icons.chat),
             label: 'Asistente',
-          ),
+          ) */
+          ,
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
             label: 'Perfil',
@@ -83,9 +83,9 @@ class _BottomNavMenuState extends State<BottomNavMenu> {
   }
 }
 
-class AsistenteVirtualScreen extends StatelessWidget {
+/* class AsistenteVirtualScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(child: Text('Asistente virtual'));
   }
-}
+} */

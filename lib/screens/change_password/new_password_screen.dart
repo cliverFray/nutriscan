@@ -8,8 +8,19 @@ class NewPasswordScreen extends StatefulWidget {
   final String phone;
   final String code;
 
-  NewPasswordScreen(
-      {required this.phone, required this.code}); // Constructor con parámetros
+  const NewPasswordScreen({
+    Key? key,
+    required this.phone,
+    required this.code,
+  }) : super(key: key);
+
+  // Método para crear la pantalla desde argumentos
+  static NewPasswordScreen fromArguments(Map<String, dynamic> args) {
+    return NewPasswordScreen(
+      phone: args['phone'] as String,
+      code: args['code'] as String,
+    );
+  }
 
   @override
   _NewPasswordScreenState createState() => _NewPasswordScreenState();

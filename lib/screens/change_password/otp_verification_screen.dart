@@ -8,11 +8,21 @@ class OtpVerificationScreen extends StatefulWidget {
   final void Function() onOtpVerified;
   final String otpType; // Puede ser "identity_verification" o "password_reset"
 
-  OtpVerificationScreen({
+  const OtpVerificationScreen({
+    Key? key,
     required this.phone,
     required this.onOtpVerified,
     required this.otpType,
-  }); // Modificar constructor para aceptar teléfono
+  }) : super(key: key);
+
+  // Método para crear la pantalla desde argumentos
+  static OtpVerificationScreen fromArguments(Map<String, dynamic> args) {
+    return OtpVerificationScreen(
+      phone: args['phone'] as String,
+      onOtpVerified: args['onOtpVerified'] as void Function(),
+      otpType: args['otpType'] as String,
+    );
+  }
 
   @override
   _OtpVerificationScreenState createState() => _OtpVerificationScreenState();
