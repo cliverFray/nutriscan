@@ -48,9 +48,27 @@ class StaticInfoService {
 
   Future<void> sendFeedback(String message) async {
     try {
-      await dioClient.post('/feedback/', data: {'message': message});
+      final response = await dioClient.post(
+        '/feedback/',
+        data: {'message': message},
+      );
+
+      if (response.statusCode == 201) {
+      } else {
+        throw Exception(
+          'Error al enviar la retroalimentación: ${response.statusCode} - ${response.data}',
+        );
+      }
+    } on DioException catch (e) {
+      if (e.response != null) {
+        throw Exception(
+          'Error del servidor: ${e.response?.statusCode} - ${e.response?.data}',
+        );
+      } else {
+        throw Exception('Error de conexión: ${e.message}');
+      }
     } catch (e) {
-      throw Exception('Error al enviar la retroalimentación: $e');
+      throw Exception('Error inesperado al enviar la retroalimentación: $e');
     }
   }
 

@@ -56,7 +56,7 @@ class _AppInfoScreenState extends State<AppInfoScreen> {
                       ),
                       SizedBox(height: 8),
                       Text(
-                        'Versión: ${_appInfo!.version}',
+                        'Versión: ${_appInfo!.appVersion}',
                         style: TextStyle(fontSize: 16),
                       ),
                       SizedBox(height: 8),

@@ -45,7 +45,7 @@ dependencies:
   http: ^1.2.2
   flutter_charts: ^0.5.2
   dropdown_button2: ^2.3.9
-  fl_chart: ^0.70.2
+  fl_chart: ^0.63.0
   shared_preferences: ^2.5.2
   carousel_slider: ^5.0.0
   dio: ^5.7.0
