@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../widgets/custom_pass_input.dart';
 import 'bottom_nav_menu.dart';
 import 'change_password/forgot_password_screen.dart';
+import 'onboarding_screen.dart';
 import 'sign_in_screen.dart';
 import '../widgets/custom_elevated_buton.dart';
 import '../widgets/custom_text_input.dart';
@@ -151,6 +152,30 @@ class _LoginScreenState extends State<LoginScreen> {
                           style: TextStyle(color: Colors.red, fontSize: 14)),
                     SizedBox(height: 5),
 
+                    // Texto "¿Olvidaste tu contraseña?"
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () {
+                          // Acción para recuperar la contraseña
+                          // Navegar a la pantalla de OTP
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ForgotPasswordScreen(),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          '¿Olvidaste tu contraseña?',
+                          style: TextStyle(
+                            color: Color(0xFFFF6F61),
+                            fontSize: 17,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 5),
                     // Botón "Iniciar sesión"
                     _isLoading
                         ? CircularProgressIndicator()

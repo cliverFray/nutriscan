@@ -11,7 +11,8 @@ import 'package:intl/date_symbol_data_local.dart'; // Importación necesaria
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'screens/bottom_nav_menu.dart';
-import 'screens/login_screen.dart'; // Para las localizaciones
+import 'screens/login_screen.dart';
+import 'screens/onboarding_screen.dart'; // Para las localizaciones
 
 void main() async {
   //la funcion tiene que ser async
@@ -27,13 +28,22 @@ void main() async {
   //isloggin?
   SharedPreferences prefs = await SharedPreferences.getInstance();
   bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+  bool onboardingComplete = prefs.getBool('onboardingComplete') ?? false;
 
-  runApp(MyApp(isLoggedIn: isLoggedIn));
+  runApp(MyApp(
+    isLoggedIn: isLoggedIn,
+    showOnboarding: !onboardingComplete,
+  ));
 }
 
 class MyApp extends StatelessWidget {
   final bool isLoggedIn;
-  const MyApp({Key? key, required this.isLoggedIn}) : super(key: key);
+  final bool showOnboarding;
+  const MyApp({
+    Key? key,
+    required this.isLoggedIn,
+    required this.showOnboarding,
+  }) : super(key: key);
 
   // This widget is the root of your application.
   @override
@@ -75,7 +85,11 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: isLoggedIn ? BottomNavMenu() : LoginScreen(), // Pantalla inicial
+      home: showOnboarding
+          ? OnboardingScreen()
+          : isLoggedIn
+              ? BottomNavMenu()
+              : LoginScreen(), // Pantalla inicial
     );
   }
 }

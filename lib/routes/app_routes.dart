@@ -12,6 +12,7 @@ import '../screens/manage_child_profile_screen.dart';
 import '../screens/notifications_settings_screen.dart';
 import '../screens/nutri_recom.dart';
 import '../screens/perfil_screen.dart';
+import '../screens/privacy_policy_screen.dart';
 import '../screens/recipes_screen.dart';
 import '../screens/register_child_screen.dart';
 import '../screens/result_detection_screen.dart';
@@ -23,6 +24,7 @@ import '../screens/splash_screen.dart';
 import '../screens/statistycs_screen.dart';
 import '../screens/support_screen.dart';
 import '../screens/take_or_pick_photo_screen.dart';
+import '../screens/terms_and_conditions_screen.dart';
 
 class AppRoutes {
   static const splash = '/';
