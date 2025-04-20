@@ -79,6 +79,9 @@ flutter:
   - assets/images/desnjoe.jpg
   - assets/images/sanjuan.jpg
   - assets/images/happyfamily.jpg
+  - assets/images/onboarding/crece.png
+  - assets/images/onboarding/detecta.png
+  - assets/images/onboarding/nutre.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

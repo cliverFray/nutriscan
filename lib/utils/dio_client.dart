@@ -19,7 +19,9 @@ class AuthInterceptor extends Interceptor {
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
-    if (err.response?.statusCode == 401) {
+    final requiresAuth = err.requestOptions.extra['requiresAuth'] ?? true;
+
+    if (requiresAuth && err.response?.statusCode == 401) {
       // Token expirado, intenta renovarlo
       bool refreshed = await refreshAccessToken();
       if (refreshed) {
@@ -49,9 +51,7 @@ class AuthInterceptor extends Interceptor {
         await saveAccessToken(response.data['access']); // Guardar nuevo token
         return true;
       }
-    } catch (e) {
-      print("Error refrescando token: $e");
-    }
+    } catch (e) {}
     return false;
   }
 

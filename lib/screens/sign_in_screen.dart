@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import '../widgets/custom_pass_input.dart';
 import 'bottom_nav_menu.dart';
 import '../models/users.dart';
 import '../services/user_service.dart';
@@ -9,7 +10,9 @@ import '../widgets/custom_text_input.dart';
 import '../widgets/custom_title_text.dart';
 import '../widgets/name_app.dart';
 
-import 'change_password/otp_verification_screen.dart'; // Importar pantalla OTP
+import 'change_password/otp_verification_screen.dart';
+import 'privacy_policy_screen.dart';
+import 'terms_and_conditions_screen.dart'; // Importar pantalla OTP
 
 class SignInScreen extends StatefulWidget {
   @override
@@ -35,8 +38,11 @@ class _SignInScreenState extends State<SignInScreen> {
   String? emailError;
   String? placeError;
   bool acceptedTerms = false; // Estado para términos y condiciones
+  bool? isLoading;
   String? termsError; // Mensaje de error para términos y condiciones
   final UserService _userService = UserService(); // Instancia del servicio
+
+  bool _isPasswordVisible = false;
 
   // Función para validar campos
   void validateFields() {
@@ -65,6 +71,8 @@ class _SignInScreenState extends State<SignInScreen> {
       // Validación de términos y condiciones
       termsError =
           !acceptedTerms ? "Debe aceptar los términos y condiciones." : null;
+
+      isLoading = false;
     });
   }
 
@@ -80,9 +88,13 @@ class _SignInScreenState extends State<SignInScreen> {
         emailError == null &&
         placeError == null &&
         termsError == null) {
+      setState(() {
+        isLoading = true;
+      });
+      _showLoadingDialog();
       // Enviar código de verificación
-      String? responseMessage =
-          await _userService.sendVerificationCode(phoneController.text);
+      String? responseMessage = await _userService.sendVerificationCode(
+          phoneController.text.trim(), dniController.text.trim());
 
       if (responseMessage == null) {
         Navigator.push(
@@ -103,6 +115,11 @@ class _SignInScreenState extends State<SignInScreen> {
 
   // Función que se ejecuta cuando se verifica el OTP exitosamente
   Future<void> _registerAfterOtpVerification() async {
+    setState(() {
+      isLoading = true;
+    });
+    _showLoadingDialog();
+
     User newUser = User(
       userId: 0,
       userFirstName: namesController.text,
@@ -161,6 +178,24 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
+  void _showLoadingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Evita que se cierre al tocar fuera
+      builder: (BuildContext context) {
+        return AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(color: Color(0xFF83B56A)),
+              SizedBox(width: 20),
+              Text("Cargando..."),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -214,20 +249,15 @@ class _SignInScreenState extends State<SignInScreen> {
               SizedBox(height: 16),
 
               // Input para contraseña
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CustomTextInput(
-                    hintText: 'Contraseña',
-                    isPassword: true,
-                    controller: passwordController,
-                  ),
-                  if (passwordError != null)
-                    Text(
-                      passwordError!,
-                      style: TextStyle(color: Colors.red),
-                    ),
-                ],
+              PasswordInputWidget(
+                hintText: "Contraseña",
+                controller: passwordController,
+                isPasswordVisible: _isPasswordVisible,
+                togglePasswordVisibility: () {
+                  setState(() {
+                    _isPasswordVisible = !_isPasswordVisible;
+                  });
+                },
               ),
               SizedBox(height: 16),
 
@@ -432,62 +462,6 @@ class _SignInScreenState extends State<SignInScreen> {
                   ),
                 ],
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class TermsAndConditionsScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Términos y condiciones'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Términos y condiciones...',
-                style: TextStyle(
-                    fontSize: 16,
-                    color: Color(0xFF000000)), // Cambiado a amarillo
-              ),
-              // Agrega más contenido aquí según sea necesario
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class PrivacyPolicyScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Politica y privacidad'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Términos y condiciones...',
-                style: TextStyle(
-                    fontSize: 16,
-                    color: Color(0xFF000000)), // Cambiado a amarillo
-              ),
-              // Agrega más contenido aquí según sea necesario
             ],
           ),
         ),

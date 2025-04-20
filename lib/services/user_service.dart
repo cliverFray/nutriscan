@@ -24,8 +24,7 @@ class UserService {
         '/register/',
         data: {
           'user': {
-            'username':
-                user.userPhone, // Utilizamos el teléfono como nombre de usuario
+            'username': user.userPhone,
             'first_name': user.userFirstName,
             'last_name': user.userLastName,
             'email': user.userEmail,
@@ -42,20 +41,39 @@ class UserService {
         return null; // Registro exitoso
       } else {
         final errorResponse = response.data;
-        return errorResponse['error'] ?? 'Error desconocido';
+        return _parseBackendError(errorResponse);
       }
+    } on DioException catch (e) {
+      if (e.response != null && e.response?.data != null) {
+        return _parseBackendError(e.response?.data);
+      }
+      return 'Error de conexión: ${e.message}';
     } catch (e) {
-      return 'Error de conexión: $e';
+      return 'Error inesperado: $e';
     }
+  }
+
+  String _parseBackendError(dynamic data) {
+    if (data is Map<String, dynamic>) {
+      if (data.containsKey('userDNI')) {
+        return data['userDNI'][0];
+      }
+      if (data.containsKey('userPhone')) {
+        return data['userPhone'][0];
+      }
+      if (data.containsKey('username')) {
+        return data['username'][0];
+      }
+      if (data.containsKey('non_field_errors')) {
+        return data['non_field_errors'][0];
+      }
+    }
+    return 'Error desconocido';
   }
 
   // Método para iniciar sesión y guardar tokens
   Future<String?> loginUser(String phone, String password) async {
     try {
-      print("Iniciando petición de login...");
-      print("URL base: ${dioClient.options.baseUrl}");
-      print("Endpoint: /login/");
-      print("Datos enviados: phone=$phone, password=$password");
       final response = await dioClient.post(
         '/login/',
         data: {
@@ -63,7 +81,6 @@ class UserService {
           'password': password,
         },
       );
-      print("REaliza la peticioin");
 
       if (response.statusCode == 200) {
         final data = response.data;
@@ -248,28 +265,53 @@ class UserService {
 
   ///--------Metodos para la verificacion de identidad----------------
   // Método para enviar el código de verificación de identidad
-  Future<String?> sendVerificationCode(String phone) async {
+  Future<String?> sendVerificationCode(String phone, String dni) async {
     try {
       final response = await dioClient.post(
         '/verification/generate-send-code/',
-        data: {'phone': phone},
+        data: {'phone': phone, 'dni': dni},
+        options: Options(
+          extra: {'requiresAuth': false}, // <<< bandera personalizada
+        ),
       );
 
-      if (response.statusCode == 200) {
-        return null; // Código enviado exitosamente
+      final responseBody = response.data;
+
+      if (response.statusCode == 200 && responseBody['codigo'] == 'exito') {
+        return null; // Éxito
       } else {
-        final responseBody = response.data;
-        switch (responseBody['codigo']) {
+        // Manejo de respuestas conocidas desde el backend
+        final codigo = responseBody['codigo'];
+        final mensaje = responseBody['mensaje'];
+
+        switch (codigo) {
           case 'telefono_requerido':
             return 'Por favor, ingresa un número de teléfono.';
+          case 'telefono_invalido':
+            return 'El número de teléfono debe tener 9 dígitos.';
           case 'error_envio_sms':
             return 'Hubo un problema al enviar el SMS. Intenta nuevamente.';
           default:
-            return responseBody['mensaje'] ?? 'Error desconocido del servidor';
+            return mensaje ?? 'Ocurrió un error desconocido.';
         }
       }
+    } on DioException catch (e) {
+      // Manejo específico de errores de Dio
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        return 'La conexión tardó demasiado. Verifica tu internet.';
+      } else if (e.type == DioExceptionType.badResponse) {
+        // El servidor respondió con un status 400, 401, 500, etc.
+        final data = e.response?.data;
+        return data?['mensaje'] ?? 'Error inesperado del servidor.';
+      } else if (e.type == DioExceptionType.connectionError) {
+        return 'No se pudo establecer conexión. Verifica tu internet.';
+      } else {
+        return 'Error inesperado: ${e.message}';
+      }
     } catch (e) {
-      return 'Error de conexión: $e';
+      // Otro tipo de error inesperado
+      return 'Error desconocido: ${e.toString()}';
     }
   }
 
