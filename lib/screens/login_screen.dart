@@ -51,7 +51,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (password.isEmpty) {
       setState(() {
-        passwordErrorMessage = 'La contraseña no puede estar vacía.';
+        passwordErrorMessage = 'Ingrese la contraseña.';
       });
       return;
     }

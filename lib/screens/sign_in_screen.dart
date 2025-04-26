@@ -44,6 +44,12 @@ class _SignInScreenState extends State<SignInScreen> {
 
   bool _isPasswordVisible = false;
 
+  //funcion para validar el formato del correo electronico
+
+  bool isValidEmail(String email) {
+    return RegExp(r"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$").hasMatch(email);
+  }
+
   // Función para validar campos
   void validateFields() {
     setState(() {
@@ -62,8 +68,11 @@ class _SignInScreenState extends State<SignInScreen> {
           phoneController.text.isEmpty || phoneController.text.length != 9
               ? "El número de teléfono debe tener 9 dígitos."
               : null;
-      emailError =
-          emailController.text.isEmpty ? "Por favor, ingrese su correo." : null;
+      emailError = emailController.text.isEmpty
+          ? "Por favor, ingrese su correo."
+          : (!isValidEmail(emailController.text)
+              ? "Dirección de correo no válida."
+              : null);
       placeError = placeController.text.isEmpty
           ? "Por favor, ingrese su lugar de residencia."
           : null;
@@ -137,6 +146,14 @@ class _SignInScreenState extends State<SignInScreen> {
       final String? loginError =
           await _userService.loginUser(newUser.userPhone, newUser.userPassword);
       if (loginError == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('¡Cuenta creada exitosamente!'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        // Espera un momento para que el usuario vea el mensaje
+        await Future.delayed(Duration(seconds: 2));
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(

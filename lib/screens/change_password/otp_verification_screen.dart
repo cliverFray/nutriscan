@@ -93,8 +93,15 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         });
       } else {
         setState(() {
-          otpError = 'Nuevo código enviado exitosamente.';
+          otpError = null;
         });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Nuevo código OTP enviado exitosamente.'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     });
   }

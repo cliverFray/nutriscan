@@ -14,6 +14,16 @@ import 'screens/bottom_nav_menu.dart';
 import 'screens/login_screen.dart';
 import 'screens/onboarding_screen.dart'; // Para las localizaciones
 
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
+
+import 'utils/scheduleMonthlyNotification.dart';
+
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
+
 void main() async {
   //la funcion tiene que ser async
   //con esto nos aseguramos que todo esto se ejecute
@@ -24,6 +34,20 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Inicializa las notificaciones locales
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
+
+  final InitializationSettings initializationSettings = InitializationSettings(
+    android: initializationSettingsAndroid,
+  );
+
+  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
+  tz.initializeTimeZones();
+  tz.setLocalLocation(
+      tz.getLocation('America/Lima')); // Ajusta si estás en otra zona
 
   //isloggin?
   SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -91,5 +115,7 @@ class MyApp extends StatelessWidget {
               ? BottomNavMenu()
               : LoginScreen(), // Pantalla inicial
     );
+
+    // Programa la notificación si es fin de mes
   }
 }

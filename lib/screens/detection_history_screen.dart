@@ -13,9 +13,9 @@ class _DetectionHistoryScreenState extends State<DetectionHistoryScreen> {
   final DetectionService _detectionService = DetectionService();
   List<DetectionHistory> detections = [];
   List<DetectionHistory> filteredDetections = [];
-  String? selectedChild;
+  String selectedChild = 'Todos';
+  String? errorMessage;
 
-  // Mapa de colores basado en el resultado de la detección
   final Map<String, Color> diagnosticoColors = {
     'Con desnutrición': Colors.red[300]!,
     'Normal': Colors.green[300]!,
@@ -34,21 +34,25 @@ class _DetectionHistoryScreenState extends State<DetectionHistoryScreen> {
       setState(() {
         detections = fetchedDetections;
         filteredDetections = fetchedDetections;
+        errorMessage = null;
       });
     } catch (e) {
-      print('Error fetching detections: $e');
+      setState(() {
+        errorMessage =
+            'Error al cargar el historial. Intenta nuevamente más tarde.';
+      });
     }
   }
 
   void filterByChild(String? childName) {
     setState(() {
-      if (childName == null || childName.isEmpty) {
+      selectedChild = childName ?? 'Todos';
+      if (selectedChild == 'Todos') {
         filteredDetections = detections;
       } else {
         filteredDetections =
-            detections.where((d) => d.childName == childName).toList();
+            detections.where((d) => d.childName == selectedChild).toList();
       }
-      selectedChild = childName;
     });
   }
 
@@ -56,6 +60,7 @@ class _DetectionHistoryScreenState extends State<DetectionHistoryScreen> {
   Widget build(BuildContext context) {
     List<String> childNames =
         detections.map((d) => d.childName).toSet().toList();
+    childNames.insert(0, 'Todos');
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -87,91 +92,114 @@ class _DetectionHistoryScreenState extends State<DetectionHistoryScreen> {
             ),
             SizedBox(height: 16),
             Expanded(
-              child: ListView.builder(
-                itemCount: filteredDetections.length,
-                itemBuilder: (context, index) {
-                  final detection = filteredDetections[index];
-                  final Color cardColor =
-                      diagnosticoColors[detection.detectionResult] ??
-                          Colors.grey;
+              child: errorMessage != null
+                  ? Center(
+                      child: Text(
+                        errorMessage!,
+                        style: TextStyle(color: Colors.red, fontSize: 16),
+                        textAlign: TextAlign.center,
+                      ),
+                    )
+                  : filteredDetections.isEmpty
+                      ? Center(
+                          child: Text(
+                            'No hay detecciones registradas.\nRealiza una nueva detección para comenzar.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontSize: 16, color: Colors.grey[700]),
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: filteredDetections.length,
+                          itemBuilder: (context, index) {
+                            final detection = filteredDetections[index];
+                            final Color cardColor =
+                                diagnosticoColors[detection.detectionResult] ??
+                                    Colors.grey;
 
-                  return Card(
-                    color: cardColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 4,
-                    margin: EdgeInsets.symmetric(vertical: 8),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              ClipRRect(
+                            return Card(
+                              color: cardColor,
+                              shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                child: Image.network(
-                                  detection.detectionImageUrl,
-                                  height: 80,
-                                  width: 80,
-                                  fit: BoxFit.cover,
-                                ),
                               ),
-                              SizedBox(width: 16),
-                              Expanded(
+                              elevation: 4,
+                              margin: EdgeInsets.symmetric(vertical: 8),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16.0),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      detection.childName,
-                                      style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white),
+                                    Row(
+                                      children: [
+                                        ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          child: Image.network(
+                                            detection.detectionImageUrl,
+                                            height: 80,
+                                            width: 80,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                        SizedBox(width: 16),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                detection.childName,
+                                                style: TextStyle(
+                                                    fontSize: 18,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.white),
+                                              ),
+                                              SizedBox(height: 8),
+                                              Text(
+                                                'Fecha: ${detection.detectionDate}',
+                                                style: TextStyle(
+                                                    fontSize: 16,
+                                                    color: Colors.white70),
+                                              ),
+                                              Text(
+                                                'Resultado: ${detection.detectionResult}',
+                                                style: TextStyle(
+                                                    fontSize: 16,
+                                                    color: Colors.white),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    SizedBox(height: 8),
-                                    Text(
-                                      'Fecha: ${detection.detectionDate}',
-                                      style: TextStyle(
-                                          fontSize: 16, color: Colors.white70),
-                                    ),
-                                    Text(
-                                      'Resultado: ${detection.detectionResult}',
-                                      style: TextStyle(
-                                          fontSize: 16, color: Colors.white),
+                                    SizedBox(height: 16),
+                                    Align(
+                                      alignment: Alignment.bottomRight,
+                                      child: ElevatedButton(
+                                        onPressed: () => _showDetailsDialog(
+                                            context, detection),
+                                        style: ElevatedButton.styleFrom(
+                                          foregroundColor: Colors.white,
+                                          backgroundColor: cardColor,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Ver detalles',
+                                          style: TextStyle(
+                                              fontSize: 16,
+                                              color: Color(0xFFFFFFFF)),
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
-                            ],
-                          ),
-                          SizedBox(height: 16),
-                          Align(
-                            alignment: Alignment.bottomRight,
-                            child: ElevatedButton(
-                              onPressed: () =>
-                                  _showDetailsDialog(context, detection),
-                              style: ElevatedButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                backgroundColor: cardColor,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                              child: Text(
-                                'Ver detalles',
-                                style: TextStyle(
-                                    fontSize: 16, color: Color(0xFFFFFFFF)),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
+                            );
+                          },
+                        ),
             ),
           ],
         ),

@@ -1,4 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.example.nutriscan">
+
+
+    <!-- ✅ Permisos necesarios -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+
+    <!-- Si estás usando Android 13 o superior, considera reemplazar los 2 de arriba por esto -->
+    <!-- <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/> -->
+    
     <application
         android:label="nutriscan"
         android:name="${applicationName}"

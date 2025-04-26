@@ -31,6 +31,9 @@ class _RegisterChildScreenState extends State<RegisterChildScreen> {
   String? nameError;
   String? lastNameError;
   String? birthDateError;
+  String? weightError;
+  String? heightError;
+  bool _isLoading = false;
 
   // Función para mostrar el selector de fecha
   Future<void> _selectDate(BuildContext context) async {
@@ -60,6 +63,15 @@ class _RegisterChildScreenState extends State<RegisterChildScreen> {
     }
   }
 
+  bool _isBirthDateValid(String birthDate) {
+    try {
+      DateTime date = DateFormat('dd/MM/yyyy', 'es_PE').parse(birthDate);
+      return date.isBefore(DateTime.now());
+    } catch (_) {
+      return false;
+    }
+  }
+
   // Función para validar y registrar
   void _validateAndRegister() async {
     String names = namesController.text;
@@ -68,13 +80,13 @@ class _RegisterChildScreenState extends State<RegisterChildScreen> {
     String weight = weightController.text;
     String height = heightController.text;
 
-    print('Register button pressed');
-
     setState(() {
       // Limpiar errores previos
       nameError = null;
       lastNameError = null;
       birthDateError = null;
+      weightError = null;
+      heightError = null;
 
       if (names.isEmpty) {
         nameError = 'El campo Nombres es obligatorio.';
@@ -82,37 +94,65 @@ class _RegisterChildScreenState extends State<RegisterChildScreen> {
       if (lastName.isEmpty) {
         lastNameError = 'El campo Apellidos es obligatorio.';
       }
-      if (birthDate.isEmpty) {
-        birthDateError = 'El campo Fecha de nacimiento es obligatorio.';
-      }
+      birthDateError = birthDate.isEmpty
+          ? 'El campo Fecha de nacimiento es obligatorio.'
+          : _isBirthDateValid(birthDate)
+              ? null
+              : 'Fecha de nacimiento no válida';
+
+      weightError = (weight.isNotEmpty &&
+              (double.tryParse(weight) == null || double.parse(weight) <= 0))
+          ? 'Peso no válido'
+          : null;
+
+      heightError = (height.isNotEmpty &&
+              (double.tryParse(height) == null || double.parse(height) <= 0))
+          ? 'Talla no válida'
+          : null;
     });
 
     // Si no hay errores en los campos obligatorios
     if (nameError == null && lastNameError == null && birthDateError == null) {
-      DateTime parsedDate = DateFormat('dd/MM/yyyy', 'es_PE').parse(birthDate);
-      String formattedBirthDate = DateFormat('yyyy-MM-dd').format(parsedDate);
-      // Convertir los datos en el modelo Child
-      Child newChild = Child(
-        childId: 0, // Dependerá del backend asignar un ID al nuevo registro
-        childName: names,
-        childLastName: lastName,
-        childBirthDate: DateTime.parse(formattedBirthDate), // Almacena la fecha
-        childAgeMonth: _calculateAgeInMonths(birthDate),
-        childGender: _selectedGender == 'Masculino',
-        childCurrentWeight: weight.isEmpty ? null : double.parse(weight),
-        childCurrentHeight: height.isEmpty ? null : double.parse(height),
-      );
+      try {
+        DateTime parsedDate =
+            DateFormat('dd/MM/yyyy', 'es_PE').parse(birthDate);
+        String formattedBirthDate = DateFormat('yyyy-MM-dd').format(parsedDate);
+        // Convertir los datos en el modelo Child
+        Child newChild = Child(
+          childId: 0, // Dependerá del backend asignar un ID al nuevo registro
+          childName: names,
+          childLastName: lastName,
+          childBirthDate:
+              DateTime.parse(formattedBirthDate), // Almacena la fecha
+          childAgeMonth: _calculateAgeInMonths(birthDate),
+          childGender: _selectedGender == 'Masculino',
+          childCurrentWeight: weight.isEmpty ? null : double.parse(weight),
+          childCurrentHeight: height.isEmpty ? null : double.parse(height),
+        );
 
-      // Llamar al servicio para registrar al niño
-      String? responseMessage = await _childService.registerChild(newChild);
+        // Llamar al servicio para registrar al niño
+        String? responseMessage = await _childService.registerChild(newChild);
+        setState(() {
+          _isLoading = false;
+        });
 
-      if (responseMessage == null) {
-        // Registro exitoso, mostrar mensaje y navegar
-        _showSuccess();
-      } else {
-        // Muestra el error si falla
-        _showError(responseMessage);
+        if (responseMessage == null) {
+          // Registro exitoso, mostrar mensaje y navegar
+          _showSuccess();
+        } else {
+          // Muestra el error si falla
+          _showError(responseMessage);
+        }
+      } catch (e) {
+        setState(() {
+          _isLoading = false;
+        });
+        _showError("Ocurrió un error inesperado.");
       }
+    } else {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -309,10 +349,12 @@ class _RegisterChildScreenState extends State<RegisterChildScreen> {
               SizedBox(height: 16),
 
               // Botón de registrar
-              CustomElevatedButton(
-                onPressed: _validateAndRegister,
-                text: 'Registrar niñ@',
-              ),
+              _isLoading
+                  ? CircularProgressIndicator(color: Color(0xFF83B56A))
+                  : CustomElevatedButton(
+                      onPressed: _validateAndRegister,
+                      text: 'Registrar niñ@',
+                    ),
               SizedBox(height: 16),
 
               // Mensaje indicando que algunos campos son opcionales

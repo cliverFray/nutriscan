@@ -157,31 +157,56 @@ class UserService {
   }
 
   // Método para actualizar los datos del usuario logueado
-  Future<bool> updateUserProfile(UserUpdate user) async {
+  Future<String?> updateUserProfile(UserUpdate user) async {
     try {
-      // Realiza la solicitud PUT al endpoint relativo
       final response = await dioClient.put(
         '/user/update/',
         data: {
           'user': {
-            'username': user.userPhone, // Usamos el teléfono como username
+            'username': user.userPhone, // Si es necesario
             'first_name': user.userFirstName,
             'last_name': user.userLastName,
             'email': user.userEmail,
-            'password': user.userPassword,
+            'password': user.userPassword?.isNotEmpty == true
+                ? user.userPassword
+                : null,
           },
-          'userDNI': user.userDNI,
-          'userPhone': user.userPhone,
-          'userPlace': user.userPlace,
+          'additional_info': {
+            'userDNI': user.userDNI,
+            'userPhone': user.userPhone,
+            'userPlace': user.userPlace,
+          }
         },
       );
 
-      // Si el código de estado es 200, la actualización fue exitosa
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        return null; // Éxito
+      } else {
+        return _parseUpdateError(response.data);
+      }
+    } on DioException catch (e) {
+      if (e.response != null && e.response?.data != null) {
+        return _parseUpdateError(e.response?.data);
+      }
+      return 'Error de conexión: ${e.message}';
     } catch (e) {
-      print('Error actualizando el perfil: $e');
-      return false;
+      return 'Error inesperado: $e';
     }
+  }
+
+  String _parseUpdateError(dynamic data) {
+    if (data is Map<String, dynamic>) {
+      if (data.containsKey('email')) return data['email'];
+      if (data.containsKey('userDNI')) return data['userDNI'];
+      if (data.containsKey('error')) return data['error'];
+      if (data.containsKey('user_errors')) {
+        return data['user_errors'].values.first[0];
+      }
+      if (data.containsKey('additional_info_errors')) {
+        return data['additional_info_errors'].values.first[0];
+      }
+    }
+    return 'Error desconocido al actualizar el perfil.';
   }
 
   ///----para el cambio de contraseña
@@ -196,7 +221,7 @@ class UserService {
       if (response.statusCode == 200) {
         return null; // Solicitud exitosa
       } else {
-        throw Exception('Error al solicitar el código: ${response.statusCode}');
+        return response.data['error'] ?? 'Error desconocido';
       }
     } catch (e) {
       return 'Error de conexión: $e';
@@ -214,7 +239,7 @@ class UserService {
       if (response.statusCode == 200) {
         return null; // Código verificado con éxito
       } else {
-        throw Exception('Error al verificar el código: ${response.statusCode}');
+        return response.data['error'] ?? 'Error desconocido';
       }
     } catch (e) {
       return 'Error de conexión: $e';
@@ -370,11 +395,38 @@ class UserService {
     }
   }
 
-  Future<void> logoutUser() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('access_token');
-    await prefs.remove('refresh_token');
-    await prefs.setBool('isLoggedIn', false);
+  Future<String?> logoutUser() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final refreshToken = prefs.getString('refresh_token');
+
+      if (refreshToken == null) {
+        return 'No se encontró el refresh token.';
+      }
+
+      final response = await dioClient.post(
+        '/user/logout/',
+        data: {'refresh': refreshToken},
+      );
+
+      if (response.statusCode == 205) {
+        // Limpiar los tokens del dispositivo
+        await prefs.remove('access_token');
+        await prefs.remove('refresh_token');
+        await prefs.setBool('isLoggedIn', false);
+        return null; // Logout exitoso
+      } else {
+        return 'Error al cerrar sesión. Código: ${response.statusCode}';
+      }
+    } on DioException catch (e) {
+      if (e.response != null && e.response?.data != null) {
+        return e.response?.data['error'] ??
+            'Error desconocido al cerrar sesión.';
+      }
+      return 'Error de conexión: ${e.message}';
+    } catch (e) {
+      return 'Error inesperado: $e';
+    }
   }
 
   Future<String?> deleteAccount(String password) async {

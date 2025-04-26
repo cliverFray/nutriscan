@@ -24,13 +24,45 @@ class ResultDetectionScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Extrae los valores de diagnóstico y recomendación desde detectionData
-    final String diagnostico =
-        detectionData['detectionResult'] ?? 'Diagnóstico desconocido';
-    final String recomendacionInmediata =
-        detectionData['immediateRecommendation'] ??
-            'No se encontró una recomendación.';
-    // Define el color y el estado de salud en base al diagnóstico
+    final String? diagnostico = detectionData['detectionResult'];
+    final String? recomendacion = detectionData['immediateRecommendation'];
+
+    // Manejo de error si no hay datos válidos
+    if (diagnostico == null || diagnostico == 'Error') {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text("Error en la detección"),
+          backgroundColor: Color(0xFF83B56A),
+          foregroundColor: Colors.white,
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, color: Colors.red, size: 60),
+                SizedBox(height: 20),
+                Text(
+                  'Ocurrió un error al analizar la imagen.\nPor favor, intenta nuevamente con otra foto o contacta con soporte si el problema persiste.',
+                  style: TextStyle(fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 20),
+                CustomButton2(
+                  buttonText: "Volver a intentar",
+                  onPressed: () {
+                    Navigator.pop(context); // Vuelve a la pantalla anterior
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Colores para diagnóstico
     final Map<String, Color> diagnosticoColors = {
       'Con desnutrición': Colors.red,
       'Normal': Colors.green,
@@ -40,13 +72,17 @@ class ResultDetectionScreen extends StatelessWidget {
     final Color diagnosticoColor =
         diagnosticoColors[diagnostico] ?? Colors.grey;
 
+    // Texto personalizado si el niño está saludable
+    final String mensajeDiagnostico = diagnostico == 'Normal'
+        ? 'El niño se encuentra en buen estado de salud.'
+        : diagnostico;
+
     return Scaffold(
       backgroundColor: Color(0xFFFFFFFF),
       appBar: AppBar(
         title: Text("Resultados de la detección"),
         backgroundColor: Color(0xFF83B56A),
-        foregroundColor: Color(
-            0xFFFFFFFF), // Puedes cambiar el color del AppBar si lo deseas
+        foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -59,7 +95,6 @@ class ResultDetectionScreen extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             SizedBox(height: 20),
-            // Muestra la imagen analizada
             Image.file(
               imagenAnalizada,
               height: 200,
@@ -68,7 +103,7 @@ class ResultDetectionScreen extends StatelessWidget {
             ),
             SizedBox(height: 20),
             Text(
-              diagnostico,
+              mensajeDiagnostico,
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -90,7 +125,7 @@ class ResultDetectionScreen extends StatelessWidget {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             Text(
-              recomendacionInmediata,
+              recomendacion ?? 'No se pudo mostrar recomendaciones inmediatas.',
               style: TextStyle(fontSize: 16),
               textAlign: TextAlign.center,
             ),
@@ -99,7 +134,6 @@ class ResultDetectionScreen extends StatelessWidget {
               child: CustomButton2(
                 buttonText: "Ver recomendaciones",
                 onPressed: () {
-                  // Acción para ver historial
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -112,7 +146,6 @@ class ResultDetectionScreen extends StatelessWidget {
             SizedBox(height: 10),
             TextButton(
               onPressed: () {
-                // Acción para ver historial
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -127,7 +160,7 @@ class ResultDetectionScreen extends StatelessWidget {
             SizedBox(height: 10),
             TextButton(
               onPressed: () {
-                // Acción para realizar una nueva detección
+                Navigator.pop(context); // Volver para una nueva detección
               },
               child: Text(
                 'Nueva detección',

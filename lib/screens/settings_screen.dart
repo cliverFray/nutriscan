@@ -15,7 +15,7 @@ class ProfileSettingsScreen extends StatelessWidget {
 
   void _showDeleteAccountDialog(BuildContext context) {
     final TextEditingController passwordController = TextEditingController();
-    final Color primaryColor = Color(0xFF83B56A); // Color principal de tu app
+    final Color primaryColor = Color(0xFF83B56A);
 
     showDialog(
       context: context,
@@ -51,6 +51,7 @@ class ProfileSettingsScreen extends StatelessWidget {
             TextButton(
               onPressed: () async {
                 final password = passwordController.text;
+
                 if (password.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -61,25 +62,52 @@ class ProfileSettingsScreen extends StatelessWidget {
                   return;
                 }
 
-                // Llama al servicio de eliminación
+                Navigator.of(context)
+                    .pop(); // Cierra el diálogo de confirmación
+
+                // Mostrar diálogo de carga
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) => AlertDialog(
+                    content: Row(
+                      children: [
+                        CircularProgressIndicator(color: primaryColor),
+                        SizedBox(width: 16),
+                        Text("Eliminando cuenta..."),
+                      ],
+                    ),
+                  ),
+                );
+
                 String? result = await _userService.deleteAccount(password);
+
+                Navigator.of(context).pop(); // Cierra el diálogo de carga
+
                 if (result == null) {
-                  // Éxito
-                  Navigator.of(context).pop(); // Cierra el diálogo
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (context) => LoginScreen()),
-                    (route) => false, // Remueve todas las rutas anteriores
-                  );
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Cuenta eliminada exitosamente.'),
-                      backgroundColor: primaryColor,
+                  // Mostrar diálogo de éxito antes de redirigir
+                  showDialog(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: Text("Cuenta eliminada"),
+                      content: Text(
+                          "Tu cuenta ha sido eliminada exitosamente. Gracias por haber usado NutriScan."),
+                      actions: [
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(builder: (_) => LoginScreen()),
+                              (route) => false,
+                            );
+                          },
+                          child: Text("Aceptar"),
+                        ),
+                      ],
                     ),
                   );
                 } else {
-                  // Error
-                  Navigator.of(context).pop(); // Cierra el diálogo
+                  // Mostrar error en SnackBar
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(result),

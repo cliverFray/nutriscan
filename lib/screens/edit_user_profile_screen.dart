@@ -143,21 +143,38 @@ class _EditUserProfileScreenState extends State<EditUserProfileScreen> {
     );
   }
 
-  void _saveChanges(UserUpdate updatedUser) {
-    us.updateUserProfile(updatedUser).then((success) {
-      if (success == true) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Perfil actualizado correctamente.'),
-          backgroundColor: Colors.green,
-        ));
-        Navigator.pop(context, updatedUser);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Error al actualizar el perfil.'),
-          backgroundColor: Colors.red,
-        ));
-      }
-    });
+  void _saveChanges(UserUpdate updatedUser) async {
+    final error = await us.updateUserProfile(updatedUser);
+
+    if (error == null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Perfil actualizado correctamente.'),
+        backgroundColor: Colors.green,
+      ));
+      Navigator.pop(context, updatedUser);
+    } else {
+      setState(() {
+        // Reiniciamos todos los errores
+        emailError = null;
+        dniError = null;
+        phoneError = null;
+
+        // Verificamos el mensaje de error específico y lo asignamos
+        if (error.contains('correo')) {
+          emailError = error;
+        } else if (error.contains('DNI')) {
+          dniError = error;
+        } else if (error.contains('teléfono')) {
+          phoneError = error;
+        } else {
+          // Si no encaja con ningún campo, mostrarlo como mensaje general
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Error: $error'),
+            backgroundColor: Colors.red,
+          ));
+        }
+      });
+    }
   }
 
   @override

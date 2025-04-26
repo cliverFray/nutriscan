@@ -6,6 +6,8 @@ import '../models/nutrition_tip.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'dart:convert';
 
+import '../utils/scheduleMonthlyNotification.dart';
+
 class HomeScreen extends StatefulWidget {
   @override
   _HomeScreenState createState() => _HomeScreenState();
@@ -22,6 +24,13 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _fetchData();
+    // Programar recordatorio mensual después de renderizado
+    // Esperar a que el widget esté completamente montado antes de usar context
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        scheduleMonthlyNotification(context);
+      }
+    });
   }
 
   Future<void> _fetchData() async {
@@ -48,39 +57,53 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: Colors.white,
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Bienvenida al usuario
-                  Text(
-                    'Bienvenido, ${_userProfile?.userFirstName ?? ''}',
-                    style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black),
+          : _nutritionTips.isEmpty
+              ? Center(
+                  child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                      Icon(Icons.error_outline, color: Colors.red, size: 60),
+                      SizedBox(height: 10),
+                      Text(
+                        "No se pudieron cargar los consejos nutricionales.\nPor favor, revisa tu conexión o vuelve a intentarlo.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 16),
+                      ),
+                      SizedBox(height: 20),
+                    ]))
+              : Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Bienvenida al usuario
+                      Text(
+                        'Bienvenido, ${_userProfile?.userFirstName ?? ''}',
+                        style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Detecta, nutre y crece',
+                        style: TextStyle(fontSize: 16, color: Colors.black54),
+                      ),
+                      SizedBox(height: 20),
+                      // Título de consejos prácticos
+                      Text(
+                        'Consejos prácticos',
+                        style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black),
+                      ),
+                      SizedBox(height: 16),
+                      // Cards rotativos de consejos prácticos
+                      _buildNutritionTipsCarousel(),
+                    ],
                   ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Detecta, nutre y crece',
-                    style: TextStyle(fontSize: 16, color: Colors.black54),
-                  ),
-                  SizedBox(height: 20),
-                  // Título de consejos prácticos
-                  Text(
-                    'Consejos prácticos',
-                    style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black),
-                  ),
-                  SizedBox(height: 16),
-                  // Cards rotativos de consejos prácticos
-                  _buildNutritionTipsCarousel(),
-                ],
-              ),
-            ),
+                ),
     );
   }
 

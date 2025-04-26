@@ -35,14 +35,21 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
   bool showNewPassword = false;
   bool showConfirmPassword = false;
   String? passwordError;
+  bool isSubmitting = false;
 
   // Función para validar y guardar la nueva contraseña
   void _verifyAndSavePassword() async {
+    if (isSubmitting) return;
+    setState(() => isSubmitting = true);
     String newPassword = newPasswordController.text;
     String confirmPassword = confirmPasswordController.text;
 
     setState(() {
       passwordError = null; // Limpiar errores previos
+      //para la robustes de las contraseñas
+      if (newPassword.length < 6) {
+        passwordError = 'La contraseña debe tener al menos 6 caracteres.';
+      }
 
       if (newPassword != confirmPassword) {
         passwordError = 'Las contraseñas no coinciden.';
@@ -72,6 +79,14 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
         });
       }
     }
+    setState(() => isSubmitting = false);
+  }
+
+  @override
+  void dispose() {
+    newPasswordController.dispose();
+    confirmPasswordController.dispose();
+    super.dispose();
   }
 
   // Widget de Input con Icono de Ojo para Mostrar/Ocultar Contraseña
@@ -173,7 +188,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
               SizedBox(
                 width: double.infinity,
                 child: CustomElevatedButton(
-                  onPressed: _verifyAndSavePassword,
+                  onPressed: isSubmitting ? null : _verifyAndSavePassword,
                   text: 'Guardar contraseña',
                 ),
               ),

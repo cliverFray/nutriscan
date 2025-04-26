@@ -8,6 +8,8 @@ import '../widgets/custom_button_icon.dart';
 import '../widgets/custom_elevated_button_2.dart';
 import '../models/malnutrition_detection.dart';
 
+import 'package:permission_handler/permission_handler.dart'; // import para los permisos
+
 class TakeOrPickPhotoScreen extends StatefulWidget {
   final int childId;
 
@@ -34,24 +36,36 @@ class _TakeOrPickPhotoScreenState extends State<TakeOrPickPhotoScreen> {
       DetectionService(); // Instancia del servicio de detección
 
   // Método para tomar una foto con la cámara
+  // Método para solicitar permisos antes de tomar la foto
   Future<void> _takePhoto() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.camera);
-    if (pickedFile != null) {
-      setState(() {
-        _image = File(pickedFile.path);
-      });
-      _validateAndCheckImage(_image!);
+    final cameraStatus = await Permission.camera.request();
+    if (cameraStatus.isGranted) {
+      final pickedFile = await _picker.pickImage(source: ImageSource.camera);
+      if (pickedFile != null) {
+        setState(() {
+          _image = File(pickedFile.path);
+        });
+        _validateAndCheckImage(_image!);
+      }
+    } else {
+      _showSnackBar('Permiso de cámara denegado.', isError: true);
     }
   }
 
   // Método para seleccionar una foto desde la galería
+  // Método para solicitar permisos antes de acceder a la galería
   Future<void> _pickFromGallery() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() {
-        _image = File(pickedFile.path);
-      });
-      _validateAndCheckImage(_image!);
+    final galleryStatus = await Permission.photos.request(); // Para Android 13+
+    if (galleryStatus.isGranted) {
+      final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+      if (pickedFile != null) {
+        setState(() {
+          _image = File(pickedFile.path);
+        });
+        _validateAndCheckImage(_image!);
+      }
+    } else {
+      _showSnackBar('Permiso de galería denegado.', isError: true);
     }
   }
 
@@ -139,6 +153,11 @@ class _TakeOrPickPhotoScreenState extends State<TakeOrPickPhotoScreen> {
       Navigator.pop(context);
       _showSnackBar('Error al procesar la imagen: $e', isError: true);
     }
+  }
+
+  // Método para cancelar el proceso
+  void _cancelProcess() {
+    Navigator.pop(context); // Regresa a la pantalla anterior sin tomar acción
   }
 
   @override
@@ -236,6 +255,18 @@ class _TakeOrPickPhotoScreenState extends State<TakeOrPickPhotoScreen> {
                   buttonText: "Validar y Subir Foto",
                 ),
               ),
+
+            // Botón para cancelar el proceso
+            SizedBox(height: 16),
+            Center(
+              child: ElevatedButton(
+                onPressed: _cancelProcess,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.grey,
+                ),
+                child: Text('Cancelar'),
+              ),
+            ),
           ],
         ),
       ),

@@ -31,6 +31,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           await _userService.requestPasswordResetCode(phone);
 
       if (responseMessage == null) {
+        // Mostrar snackbar de éxito
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Código enviado exitosamente al número ingresado.'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
         Navigator.push(
           context,
           MaterialPageRoute(

@@ -34,6 +34,9 @@ class _EditChildProfileScreenState extends State<EditChildProfileScreen> {
   String? nameError;
   String? lastNameError;
   String? birthDateError;
+  String? weightError;
+  String? heightError;
+  String? genderError;
 
   final ChildService _childService = ChildService();
   Child? child;
@@ -62,8 +65,15 @@ class _EditChildProfileScreenState extends State<EditChildProfileScreen> {
           _selectedGender = fetchedChild.childGender ? 'Masculino' : 'Femenino';
         });
       }
-    } catch (e) {
-      print('Error loading child data: $e');
+    } catch (e) {}
+  }
+
+  bool _isBirthDateValid(String birthDate) {
+    try {
+      DateTime date = DateFormat('dd/MM/yyyy', 'es_PE').parse(birthDate);
+      return date.isBefore(DateTime.now());
+    } catch (_) {
+      return false;
     }
   }
 
@@ -77,11 +87,26 @@ class _EditChildProfileScreenState extends State<EditChildProfileScreen> {
     String height = heightController.text;
 
     setState(() {
+      genderError =
+          _selectedGender == null ? 'Debe seleccionar un género.' : null;
       nameError = names.isEmpty ? 'El campo Nombres es obligatorio.' : null;
       lastNameError =
           lastName.isEmpty ? 'El campo Apellidos es obligatorio.' : null;
       birthDateError = birthDate.isEmpty
           ? 'El campo Fecha de nacimiento es obligatorio.'
+          : _isBirthDateValid(birthDate)
+              ? null
+              : 'Fecha de nacimiento no válida';
+
+      // Validar peso y talla si no están vacíos
+      weightError = (weight.isNotEmpty &&
+              (double.tryParse(weight) == null || double.parse(weight) <= 0))
+          ? 'Peso no válido'
+          : null;
+
+      heightError = (height.isNotEmpty &&
+              (double.tryParse(height) == null || double.parse(height) <= 0))
+          ? 'Talla no válida'
           : null;
     });
 
@@ -238,6 +263,9 @@ class _EditChildProfileScreenState extends State<EditChildProfileScreen> {
                         });
                       },
                     ),
+                    if (genderError != null) ...[
+                      Text(genderError!, style: TextStyle(color: Colors.red)),
+                    ],
                     SizedBox(height: 16),
                     CustomTextInput(
                       hintText: 'Peso en kg',

@@ -77,13 +77,30 @@ class _PerfilScreenState extends State<PerfilScreen> {
     );
   }
 
-  Future<void> _logout() async {
-    await _userService.logoutUser(); // Cierra sesión y limpia datos
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => LoginScreen()),
-      (route) => false, // Remueve todas las rutas anteriores
+  void _showLogoutConfirmation() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("Sesión cerrada exitosamente."),
+        backgroundColor: Colors.green,
+      ),
     );
+  }
+
+  Future<void> _logout() async {
+    final result = await _userService.logoutUser(); // Cierra sesión
+
+    if (result == null) {
+      // Logout exitoso
+      _showLogoutConfirmation(); // Muestra mensaje de éxito
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => LoginScreen()),
+        (route) => false,
+      );
+    } else {
+      // Si ocurrió un error
+      _showSnackBar(result, isError: true);
+    }
   }
 
   @override

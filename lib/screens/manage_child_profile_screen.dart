@@ -49,7 +49,7 @@ class _ManageChildProfileScreenState extends State<ManageChildProfileScreen> {
       return children;
     } else {
       return children
-          .where((child) => child.childName == selectedChild!.childName)
+          .where((child) => child.childId == selectedChild!.childId)
           .toList();
     }
   }
@@ -83,15 +83,24 @@ class _ManageChildProfileScreenState extends State<ManageChildProfileScreen> {
                 'Selecciona un niño',
                 style: TextStyle(fontSize: 14, color: Colors.black),
               ),
-              items: children.map((child) {
-                return DropdownMenuItem<Child>(
-                  value: child,
+              items: [
+                DropdownMenuItem<Child>(
+                  value: null,
                   child: Text(
-                    child.childName,
-                    style: const TextStyle(fontSize: 14),
+                    'Todos los niños',
+                    style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
                   ),
-                );
-              }).toList(),
+                ),
+                ...children.map((child) {
+                  return DropdownMenuItem<Child>(
+                    value: child,
+                    child: Text(
+                      child.childName,
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  );
+                }).toList(),
+              ],
               value: selectedChild,
               onChanged: _onSelectChild,
               buttonStyleData: const ButtonStyleData(
@@ -126,12 +135,14 @@ class _ManageChildProfileScreenState extends State<ManageChildProfileScreen> {
 
             // Listado de Cards con información del niño
             Expanded(
-              child: ListView.builder(
-                itemCount: _filteredChildren.length,
-                itemBuilder: (context, index) {
-                  return _buildChildCard(_filteredChildren[index]);
-                },
-              ),
+              child: children.isEmpty
+                  ? Center(child: Text('No hay niños registrados.'))
+                  : ListView.builder(
+                      itemCount: _filteredChildren.length,
+                      itemBuilder: (context, index) {
+                        return _buildChildCard(_filteredChildren[index]);
+                      },
+                    ),
             ),
           ],
         ),
