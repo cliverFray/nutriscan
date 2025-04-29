@@ -103,7 +103,9 @@ class _SignInScreenState extends State<SignInScreen> {
       _showLoadingDialog();
       // Enviar código de verificación
       String? responseMessage = await _userService.sendVerificationCode(
-          phoneController.text.trim(), dniController.text.trim());
+          phoneController.text.trim(),
+          dniController.text.trim(),
+          emailController.text.trim());
 
       if (responseMessage == null) {
         Navigator.push(
@@ -111,6 +113,7 @@ class _SignInScreenState extends State<SignInScreen> {
           MaterialPageRoute(
             builder: (context) => OtpVerificationScreen(
               phone: phoneController.text,
+              email: emailController.text.trim(),
               onOtpVerified: _registerAfterOtpVerification,
               otpType: "identity_verification",
             ),

@@ -211,11 +211,11 @@ class UserService {
 
   ///----para el cambio de contraseña
   // Método para solicitar el código de restablecimiento de contraseña
-  Future<String?> requestPasswordResetCode(String phone) async {
+  Future<String?> requestPasswordResetCode(String phone, String email) async {
     try {
       final response = await dioClient.post(
         '/password-reset/request/',
-        data: {'phone': phone},
+        data: {'phone': phone, 'email': email},
       );
 
       if (response.statusCode == 200) {
@@ -247,11 +247,11 @@ class UserService {
   }
 
   // Método para reenviar el código de restablecimiento de contraseña
-  Future<String?> resendPasswordResetCode(String phone) async {
+  Future<String?> resendPasswordResetCode(String phone, String email) async {
     try {
       final response = await dioClient.post(
         '/password-reset/resend/',
-        data: {'phone': phone},
+        data: {'phone': phone, 'email': email},
       );
 
       if (response.statusCode == 200) {
@@ -290,11 +290,12 @@ class UserService {
 
   ///--------Metodos para la verificacion de identidad----------------
   // Método para enviar el código de verificación de identidad
-  Future<String?> sendVerificationCode(String phone, String dni) async {
+  Future<String?> sendVerificationCode(
+      String phone, String dni, String email) async {
     try {
       final response = await dioClient.post(
         '/verification/generate-send-code/',
-        data: {'phone': phone, 'dni': dni},
+        data: {'phone': phone, 'dni': dni, 'email': email},
         options: Options(
           extra: {'requiresAuth': false}, // <<< bandera personalizada
         ),
@@ -314,8 +315,16 @@ class UserService {
             return 'Por favor, ingresa un número de teléfono.';
           case 'telefono_invalido':
             return 'El número de teléfono debe tener 9 dígitos.';
+          case 'telefono_registrado': // Nuevo caso para teléfono ya registrado
+            return 'El número de teléfono ya está registrado.';
+          case 'dni_registrado': // Nuevo caso para DNI ya registrado
+            return 'El DNI ya está registrado.';
+          case 'correo_registrado': // Nuevo caso para DNI ya registrado
+            return 'El correo ya está registrado.';
           case 'error_envio_sms':
             return 'Hubo un problema al enviar el SMS. Intenta nuevamente.';
+          case 'error_envio_correo':
+            return 'Hubo un problema al enviar el código por correo. Intenta nuevamente.';
           default:
             return mensaje ?? 'Ocurrió un error desconocido.';
         }
@@ -360,18 +369,32 @@ class UserService {
   }
 
   // Método para reenviar el código de verificación de identidad
-  Future<String?> resendIdentityVerificationCode(String phone) async {
+  Future<String?> resendIdentityVerificationCode(
+      String phone, String email) async {
     try {
       final response = await dioClient.post(
         '/verification/resend-code/',
-        data: {'phone': phone},
+        data: {'phone': phone, 'email': email},
       );
 
       if (response.statusCode == 200) {
         return null; // Código reenviado con éxito
       } else {
         final errorResponse = response.data;
-        return errorResponse['error'] ?? 'Error desconocido';
+        final codigo = errorResponse['codigo'];
+
+        switch (codigo) {
+          case 'telefono_requerido':
+            return 'Por favor, ingresa un número de teléfono.';
+          case 'telefono_no_encontrado':
+            return 'El número de teléfono no está registrado. Por favor, regístralo primero.';
+          case 'error_envio_sms':
+            return 'Hubo un problema al enviar el código por SMS. Intenta nuevamente.';
+          case 'error_envio_correo':
+            return 'Hubo un problema al enviar el código por correo. Intenta nuevamente.';
+          default:
+            return errorResponse['mensaje'] ?? 'Error desconocido';
+        }
       }
     } catch (e) {
       return 'Error de conexión: $e';

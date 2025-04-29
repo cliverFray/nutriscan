@@ -5,12 +5,14 @@ import 'new_password_screen.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
   final String phone; // Añadir el campo de teléfono
+  final String email; // Añadir el campo de teléfono
   final void Function() onOtpVerified;
   final String otpType; // Puede ser "identity_verification" o "password_reset"
 
   const OtpVerificationScreen({
     Key? key,
     required this.phone,
+    required this.email,
     required this.onOtpVerified,
     required this.otpType,
   }) : super(key: key);
@@ -19,6 +21,7 @@ class OtpVerificationScreen extends StatefulWidget {
   static OtpVerificationScreen fromArguments(Map<String, dynamic> args) {
     return OtpVerificationScreen(
       phone: args['phone'] as String,
+      email: args['email'] as String,
       onOtpVerified: args['onOtpVerified'] as void Function(),
       otpType: args['otpType'] as String,
     );
@@ -54,7 +57,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
           ? _userService.verifyIdentityCode
           : _userService.verifyPasswordResetCode;
 
-      verificationMethod(widget.phone, otp).then((result) {
+      verificationMethod(widget.phone, widget.email).then((result) {
         if (result == null) {
           if (widget.otpType == "password_reset") {
             // Navegar a la pantalla de cambio de contraseña en caso de restablecimiento de contraseña
@@ -86,7 +89,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         ? _userService.resendIdentityVerificationCode
         : _userService.resendPasswordResetCode;
 
-    resendMethod(widget.phone).then((result) {
+    resendMethod(widget.phone, widget.email).then((result) {
       if (result != null) {
         setState(() {
           otpError = result;

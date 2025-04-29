@@ -18,12 +18,15 @@ class StaticstycService {
   }
 
   // Gráfico de crecimiento
-  Future<GrowthChartData> fetchGrowthChartData(int childId) async {
+  Future<GrowthChartData> fetchGrowthChartData(int child_id) async {
     try {
-      final response = await dioClient.get('/children/$childId/growth-chart/');
+      final response = await dioClient.get('/children/$child_id/growth-chart/');
 
       if (response.statusCode == 200) {
+        print(response.data);
         return GrowthChartData.fromJson(response.data);
+      } else if (response.statusCode == 204) {
+        throw Exception('No hay suficientes datos para generar el gráfico.');
       } else {
         throw Exception(
             'Error ${response.statusCode}: ${response.data['error'] ?? 'No se pudo obtener los datos.'}');
@@ -39,14 +42,19 @@ class StaticstycService {
   }
 
   // Gráfico de detección por categorías
-  Future<List<DetectionResult>> fetchDetectionCategoryChart(int childId) async {
+  Future<List<DetectionResult>> fetchDetectionCategoryChart(
+      int child_id) async {
     try {
       final response =
-          await dioClient.get('/children/$childId/detection-chart/');
+          await dioClient.get('/children/$child_id/detection-chart/');
 
       if (response.statusCode == 200) {
         final List<dynamic> jsonList = response.data;
+
         return jsonList.map((json) => DetectionResult.fromJson(json)).toList();
+      } else if (response.statusCode == 204) {
+        print('No Content (204), sin datos de detección.'); // << AÑADIDO
+        throw Exception('No hay suficientes datos para generar el gráfico.');
       } else {
         throw Exception(
             'Error ${response.statusCode}: ${response.data['error'] ?? 'No se pudo obtener los datos.'}');

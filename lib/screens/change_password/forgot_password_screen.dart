@@ -12,29 +12,37 @@ class ForgotPasswordScreen extends StatefulWidget {
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final TextEditingController phoneController = TextEditingController();
+  final TextEditingController emailController =
+      TextEditingController(); // Nuevo controlador
   String? phoneError;
+  String? emailError;
   final UserService _userService = UserService(); // Instancia del servicio
 
   // Función para validar y continuar con la recuperación de contraseña
   void _validateAndRegister() async {
     String phone = phoneController.text;
+    String email = emailController.text;
 
     setState(() {
       phoneError = null;
+      emailError = null;
       if (phone.isEmpty || phone.length != 9) {
         phoneError = 'Por favor, introduce un número de teléfono válido.';
       }
+      if (email.isEmpty || !email.contains('@')) {
+        emailError = 'Por favor, introduce un correo electrónico válido.';
+      }
     });
 
-    if (phoneError == null) {
+    if (phoneError == null && emailError == null) {
       String? responseMessage =
-          await _userService.requestPasswordResetCode(phone);
+          await _userService.requestPasswordResetCode(phone, email);
 
       if (responseMessage == null) {
         // Mostrar snackbar de éxito
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Código enviado exitosamente al número ingresado.'),
+            content: Text('Código enviado exitosamente al correo ingresado.'),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
           ),
@@ -44,9 +52,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           MaterialPageRoute(
             builder: (context) => OtpVerificationScreen(
               phone: phone,
+              email: email, // Pasa también el email
               onOtpVerified: () => _navigateToNewPasswordScreen(phone),
               otpType: "password_reset",
-            ), // Pasar número de teléfono
+            ),
           ),
         );
       } else {
@@ -62,8 +71,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       MaterialPageRoute(
         builder: (context) => NewPasswordScreen(
           phone: phone,
-          code:
-              "", // Si necesitas pasar el OTP verificado, se puede ajustar aquí
+          code: "", // Puedes ajustar aquí si quieres pasar el OTP
         ),
       ),
     );
@@ -108,7 +116,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             children: [
               SizedBox(height: 16),
               Text(
-                'Introduce tu número de teléfono',
+                'Introduce tu número de teléfono y correo',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
@@ -127,13 +135,36 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 ),
                 onTap: () {
                   setState(() {
-                    phoneError = null; // Eliminar error al enfocar
+                    phoneError = null;
                   });
                 },
               ),
               if (phoneError != null) ...[
                 Text(
                   phoneError!,
+                  style: TextStyle(color: Colors.red),
+                ),
+              ],
+              SizedBox(height: 16),
+
+              // Input para correo electrónico
+              CustomTextInput(
+                hintText: 'Correo Electrónico',
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
+                suffixIcon: Icon(
+                  Icons.email,
+                  color: Color(0xFF83B56A),
+                ),
+                onTap: () {
+                  setState(() {
+                    emailError = null;
+                  });
+                },
+              ),
+              if (emailError != null) ...[
+                Text(
+                  emailError!,
                   style: TextStyle(color: Colors.red),
                 ),
               ],
