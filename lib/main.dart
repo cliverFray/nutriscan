@@ -21,8 +21,19 @@ import 'package:timezone/timezone.dart' as tz;
 
 import 'utils/scheduleMonthlyNotification.dart';
 
-final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
+Future<void> _createNotificationChannel() async {
+  const AndroidNotificationChannel channel = AndroidNotificationChannel(
+    'monthly_reminder', // id
+    'Recordatorio mensual', // name
+    description: 'Te recuerda actualizar los datos de tu hijo',
+    importance: Importance.max,
+  );
+
+  await flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>()
+      ?.createNotificationChannel(channel);
+}
 
 void main() async {
   //la funcion tiene que ser async
@@ -44,6 +55,7 @@ void main() async {
   );
 
   await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  await _createNotificationChannel();
 
   tz.initializeTimeZones();
   tz.setLocalLocation(

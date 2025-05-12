@@ -57,7 +57,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
           ? _userService.verifyIdentityCode
           : _userService.verifyPasswordResetCode;
 
-      verificationMethod(widget.phone, widget.email).then((result) {
+      verificationMethod(widget.phone, otp).then((result) {
         if (result == null) {
           if (widget.otpType == "password_reset") {
             // Navegar a la pantalla de cambio de contraseña en caso de restablecimiento de contraseña

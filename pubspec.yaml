@@ -51,7 +51,9 @@ dependencies:
   dio: ^5.7.0
   flutter_local_notifications: ^15.1.1
   timezone: ^0.9.2
-  permission_handler: ^11.3.0
+  permission_handler: ^11.3.1
+  app_settings: ^5.1.1
+  flutter_native_splash: ^2.4.4
 
 dev_dependencies:
   flutter_test:
@@ -63,6 +65,12 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+
+flutter_native_splash:
+  color: "#83B56A"
+  image: assets/images/logo_nutriscan.png
+  android: true
+
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

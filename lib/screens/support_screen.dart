@@ -14,7 +14,7 @@ class SupportScreen extends StatelessWidget {
           ListTile(
             leading: Icon(Icons.email),
             title: Text('Contacto por Correo'),
-            subtitle: Text('soporte@tuapp.com'),
+            subtitle: Text('nutriscanappcorreos@gmail.com'),
             onTap: () {
               // Lógica para enviar un correo
             },

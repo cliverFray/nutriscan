@@ -35,10 +35,36 @@ class _TakeOrPickPhotoScreenState extends State<TakeOrPickPhotoScreen> {
   final DetectionService _detectionService =
       DetectionService(); // Instancia del servicio de detección
 
+  void _showPermissionDialog({required String title, required String message}) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () {
+              openAppSettings();
+              Navigator.of(context).pop();
+            },
+            child: Text('Abrir ajustes'),
+          ),
+        ],
+      ),
+    );
+  }
+
   // Método para tomar una foto con la cámara
   // Método para solicitar permisos antes de tomar la foto
   Future<void> _takePhoto() async {
     final cameraStatus = await Permission.camera.request();
+
     if (cameraStatus.isGranted) {
       final pickedFile = await _picker.pickImage(source: ImageSource.camera);
       if (pickedFile != null) {
@@ -47,6 +73,12 @@ class _TakeOrPickPhotoScreenState extends State<TakeOrPickPhotoScreen> {
         });
         _validateAndCheckImage(_image!);
       }
+    } else if (cameraStatus.isPermanentlyDenied) {
+      _showPermissionDialog(
+        title: 'Permiso de cámara requerido',
+        message:
+            'Para tomar fotos, debes habilitar el permiso de cámara en los ajustes de la aplicación.',
+      );
     } else {
       _showSnackBar('Permiso de cámara denegado.', isError: true);
     }
@@ -55,7 +87,20 @@ class _TakeOrPickPhotoScreenState extends State<TakeOrPickPhotoScreen> {
   // Método para seleccionar una foto desde la galería
   // Método para solicitar permisos antes de acceder a la galería
   Future<void> _pickFromGallery() async {
-    final galleryStatus = await Permission.photos.request(); // Para Android 13+
+    PermissionStatus galleryStatus;
+
+    if (Platform.isAndroid) {
+      if (await Permission.photos.isGranted ||
+          await Permission.photos.request().isGranted) {
+        // Ya tenemos permiso
+        galleryStatus = PermissionStatus.granted;
+      } else {
+        galleryStatus = await Permission.photos.request();
+      }
+    } else {
+      galleryStatus = await Permission.photos.request();
+    }
+
     if (galleryStatus.isGranted) {
       final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
       if (pickedFile != null) {
@@ -64,6 +109,12 @@ class _TakeOrPickPhotoScreenState extends State<TakeOrPickPhotoScreen> {
         });
         _validateAndCheckImage(_image!);
       }
+    } else if (galleryStatus.isPermanentlyDenied) {
+      _showPermissionDialog(
+        title: 'Permiso de galería requerido',
+        message:
+            'Para seleccionar imágenes, debes habilitar el permiso de galería en los ajustes de la aplicación.',
+      );
     } else {
       _showSnackBar('Permiso de galería denegado.', isError: true);
     }

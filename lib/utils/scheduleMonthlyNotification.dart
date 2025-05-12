@@ -10,11 +10,8 @@ final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 Future<void> scheduleMonthlyNotification(BuildContext context) async {
   try {
     final now = tz.TZDateTime.now(tz.local);
-
-    // Encuentra el último día del mes
     final lastDay = DateTime(now.year, now.month + 1, 0).day;
 
-    // Programa la notificación para el último día del mes a las 10:00 AM
     final scheduledDate = tz.TZDateTime(
       tz.local,
       now.year,
@@ -45,7 +42,6 @@ Future<void> scheduleMonthlyNotification(BuildContext context) async {
       matchDateTimeComponents: DateTimeComponents.dayOfMonthAndTime,
     );
   } catch (e) {
-    // Error al programar
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

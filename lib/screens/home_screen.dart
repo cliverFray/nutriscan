@@ -8,6 +8,11 @@ import 'dart:convert';
 
 import '../utils/scheduleMonthlyNotification.dart';
 
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
+
 class HomeScreen extends StatefulWidget {
   @override
   _HomeScreenState createState() => _HomeScreenState();
@@ -28,9 +33,19 @@ class _HomeScreenState extends State<HomeScreen> {
     // Esperar a que el widget esté completamente montado antes de usar context
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
+        requestNotificationPermissions(); // <-- AÑADE ESTO
         scheduleMonthlyNotification(context);
       }
     });
+  }
+
+  Future<void> requestNotificationPermissions() async {
+    final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+    final androidPlugin =
+        flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+
+    await androidPlugin?.requestPermission();
   }
 
   Future<void> _fetchData() async {
@@ -48,6 +63,41 @@ class _HomeScreenState extends State<HomeScreen> {
         _isLoading = false;
       });
       print("Error fetching data: $e");
+    }
+  }
+
+  Future<void> showTestNotification(BuildContext context) async {
+    try {
+      const androidDetails = AndroidNotificationDetails(
+        'monthly_reminder',
+        'Recordatorio mensual',
+        channelDescription: 'Te recuerda actualizar los datos de tu hijo',
+        importance: Importance.max,
+        priority: Priority.high,
+      );
+
+      const notificationDetails = NotificationDetails(android: androidDetails);
+
+      await flutterLocalNotificationsPlugin.show(
+        1, // ID diferente al programado
+        'Prueba de notificación',
+        'Esto es una notificación de prueba.',
+        notificationDetails,
+      );
+    } catch (e) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Error'),
+          content: Text('No se pudo mostrar la notificación de prueba. $e'),
+          actions: [
+            TextButton(
+              child: Text('Cerrar'),
+              onPressed: () => Navigator.of(context).pop(),
+            )
+          ],
+        ),
+      );
     }
   }
 
@@ -101,6 +151,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       SizedBox(height: 16),
                       // Cards rotativos de consejos prácticos
                       _buildNutritionTipsCarousel(),
+                      SizedBox(height: 16),
+
+                      /* ElevatedButton(
+                        onPressed: () => showTestNotification(context),
+                        child: Text('Probar notificación inmediata'),
+                      ) */
                     ],
                   ),
                 ),
@@ -127,10 +183,13 @@ class _HomeScreenState extends State<HomeScreen> {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
               elevation: 5,
-              child: Padding(
+              child: Container(
+                width: double.infinity,
+                height: double
+                    .infinity, // Asegúrate que ocupe todo el espacio de la tarjeta
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.start,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Mostrar imagen del tip
@@ -150,12 +209,14 @@ class _HomeScreenState extends State<HomeScreen> {
                           color: Colors.white),
                     ),
                     SizedBox(height: 10),
-                    Text(
-                      tip.description,
-                      style: TextStyle(fontSize: 14, color: Colors.white70),
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Text(
+                          tip.description,
+                          style: TextStyle(fontSize: 14, color: Colors.white70),
+                        ),
+                      ),
+                    )
                   ],
                 ),
               ),
