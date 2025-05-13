@@ -101,27 +101,53 @@ class _SignInScreenState extends State<SignInScreen> {
         isLoading = true;
       });
       _showLoadingDialog();
-      // Enviar código de verificación
-      String? responseMessage = await _userService.sendVerificationCode(
+
+      final response = await _userService.sendVerificationCode(
           phoneController.text.trim(),
           dniController.text.trim(),
           emailController.text.trim());
 
-      if (responseMessage == null) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => OtpVerificationScreen(
-              phone: phoneController.text,
-              email: emailController.text.trim(),
-              onOtpVerified: _registerAfterOtpVerification,
-              otpType: "identity_verification",
-            ),
-          ),
-        );
-      } else {
-        _showError(responseMessage);
+      Navigator.pop(context);
+      setState(() {
+        isLoading = false;
+      });
+
+      if (response is String) {
+        // Es mensaje de error directo
+        _showError(response);
+        return;
       }
+
+      // Es éxito, tenemos el Map
+      final codigo = response['codigo'];
+      final smsEnviado = response['smsEnviado'] ?? false;
+      final correoEnviado = response['correoEnviado'] ?? false;
+      final mensaje = response['mensaje'] ?? '';
+
+      String advertencia = '';
+      if (!smsEnviado && correoEnviado) {
+        advertencia = 'El código solo fue enviado por correo.';
+      } else if (smsEnviado && !correoEnviado) {
+        advertencia = 'El código solo fue enviado por SMS.';
+      }
+
+      if (advertencia.isNotEmpty) {
+        _showWarning(advertencia);
+      } else {
+        _showExito("Codigo de verificacion enviado al telefono y correo");
+      }
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => OtpVerificationScreen(
+            phone: phoneController.text,
+            email: emailController.text.trim(),
+            onOtpVerified: _registerAfterOtpVerification,
+            otpType: "identity_verification",
+          ),
+        ),
+      );
     }
   }
 
@@ -152,7 +178,7 @@ class _SignInScreenState extends State<SignInScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('¡Cuenta creada exitosamente!'),
-            duration: Duration(seconds: 2),
+            duration: Duration(seconds: 5),
           ),
         );
         // Espera un momento para que el usuario vea el mensaje
@@ -175,7 +201,30 @@ class _SignInScreenState extends State<SignInScreen> {
       }
     } else {
       _showError(registrationErrorMessage);
+      setState(() {
+        isLoading = false;
+      });
     }
+  }
+
+  void _showWarning(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.orange,
+        duration: Duration(seconds: 5),
+      ),
+    );
+  }
+
+  void _showExito(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 5),
+      ),
+    );
   }
 
   void _showError(String message) {

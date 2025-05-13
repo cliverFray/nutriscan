@@ -290,62 +290,68 @@ class UserService {
 
   ///--------Metodos para la verificacion de identidad----------------
   // Método para enviar el código de verificación de identidad
-  Future<String?> sendVerificationCode(
+  Future<dynamic> sendVerificationCode(
       String phone, String dni, String email) async {
     try {
       final response = await dioClient.post(
         '/verification/generate-send-code/',
         data: {'phone': phone, 'dni': dni, 'email': email},
-        options: Options(
-          extra: {'requiresAuth': false}, // <<< bandera personalizada
-        ),
+        options: Options(extra: {'requiresAuth': false}),
       );
 
       final responseBody = response.data;
 
-      if (response.statusCode == 200 && responseBody['codigo'] == 'exito') {
-        return null; // Éxito
+      if (response.statusCode == 200) {
+        // Éxito (código enviado por SMS/correo o ambos)
+        return {
+          'codigo': responseBody['codigo'],
+          'smsEnviado': responseBody['sms_enviado'] ?? false,
+          'correoEnviado': responseBody['correo_enviado'] ?? false,
+          'mensaje': responseBody['mensaje'] ?? '',
+        };
       } else {
-        // Manejo de respuestas conocidas desde el backend
-        final codigo = responseBody['codigo'];
-        final mensaje = responseBody['mensaje'];
-
-        switch (codigo) {
-          case 'telefono_requerido':
-            return 'Por favor, ingresa un número de teléfono.';
-          case 'telefono_invalido':
-            return 'El número de teléfono debe tener 9 dígitos.';
-          case 'telefono_registrado': // Nuevo caso para teléfono ya registrado
-            return 'El número de teléfono ya está registrado.';
-          case 'dni_registrado': // Nuevo caso para DNI ya registrado
-            return 'El DNI ya está registrado.';
-          case 'correo_registrado': // Nuevo caso para DNI ya registrado
-            return 'El correo ya está registrado.';
-          case 'error_envio_sms':
-            return 'Hubo un problema al enviar el SMS. Intenta nuevamente.';
-          case 'error_envio_correo':
-            return 'Hubo un problema al enviar el código por correo. Intenta nuevamente.';
-          default:
-            return mensaje ?? 'Ocurrió un error desconocido.';
-        }
+        return _procesarErroresBackend(responseBody);
       }
     } on DioException catch (e) {
-      // Manejo específico de errores de Dio
-      if (e.type == DioExceptionType.connectionTimeout ||
+      if (e.type == DioExceptionType.badResponse) {
+        final responseBody = e.response?.data;
+        if (responseBody != null && responseBody is Map) {
+          return _procesarErroresBackend(responseBody);
+        } else {
+          return 'Error inesperado del servidor.';
+        }
+      } else if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
         return 'La conexión tardó demasiado. Verifica tu internet.';
-      } else if (e.type == DioExceptionType.badResponse) {
-        // El servidor respondió con un status 400, 401, 500, etc.
-        final data = e.response?.data;
-        return data?['mensaje'] ?? 'Error inesperado del servidor.';
       } else if (e.type == DioExceptionType.connectionError) {
         return 'No se pudo establecer conexión. Verifica tu internet.';
       } else {
         return 'Error inesperado: ${e.message}';
       }
     } catch (e) {
-      // Otro tipo de error inesperado
       return 'Error desconocido: ${e.toString()}';
+    }
+  }
+
+  String _procesarErroresBackend(Map responseBody) {
+    final codigo = responseBody['codigo'];
+    final mensaje = responseBody['mensaje'];
+
+    switch (codigo) {
+      case 'telefono_requerido':
+        return 'Por favor, ingresa un número de teléfono.';
+      case 'telefono_invalido':
+        return 'El número de teléfono debe tener 9 dígitos.';
+      case 'telefono_registrado':
+        return 'El número de teléfono ya está registrado.';
+      case 'dni_registrado':
+        return 'El DNI ya está registrado.';
+      case 'correo_registrado':
+        return 'El correo ya está registrado.';
+      case 'error_envio_ambos':
+        return 'No se pudo enviar el código por SMS ni por correo. Intenta nuevamente.';
+      default:
+        return mensaje ?? 'Ocurrió un error desconocido.';
     }
   }
 
