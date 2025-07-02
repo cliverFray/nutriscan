@@ -38,14 +38,16 @@ class ChildService {
 
       if (response.statusCode == 200) {
         final List<dynamic> jsonResponse = response.data;
+        //print(response.data);
         return jsonResponse
             .map((childJson) => Child.fromJson(childJson))
             .toList();
       } else {
         throw Exception('Error al obtener la lista de niños');
       }
-    } catch (e) {
-      throw Exception('Error de conexión: $e');
+    } catch (e, stacktrace) {
+      print("Stacktrace: $stacktrace");
+      throw Exception("Error de conexión: ${e.toString()}");
     }
   }
 

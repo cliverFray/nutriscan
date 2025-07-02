@@ -3,8 +3,6 @@ import 'routes/app_routes.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 //importaciones de firebase
-import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
 
 import 'package:intl/date_symbol_data_local.dart'; // Importación necesaria
 
@@ -14,14 +12,14 @@ import 'screens/bottom_nav_menu.dart';
 import 'screens/login_screen.dart';
 import 'screens/onboarding_screen.dart'; // Para las localizaciones
 
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+//import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
 import 'utils/scheduleMonthlyNotification.dart';
 
-Future<void> _createNotificationChannel() async {
+/* Future<void> _createNotificationChannel() async {
   const AndroidNotificationChannel channel = AndroidNotificationChannel(
     'monthly_reminder', // id
     'Recordatorio mensual', // name
@@ -33,7 +31,7 @@ Future<void> _createNotificationChannel() async {
       .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>()
       ?.createNotificationChannel(channel);
-}
+} */
 
 void main() async {
   //la funcion tiene que ser async
@@ -42,20 +40,20 @@ void main() async {
   await initializeDateFormatting(
       'es', null); // Inicializa el formato para español
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-
   // Inicializa las notificaciones locales
-  const AndroidInitializationSettings initializationSettingsAndroid =
+  /* const AndroidInitializationSettings initializationSettingsAndroid =
       AndroidInitializationSettings('@mipmap/ic_launcher');
 
   final InitializationSettings initializationSettings = InitializationSettings(
     android: initializationSettingsAndroid,
-  );
+  ); */
 
-  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
-  await _createNotificationChannel();
+  //await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  //await _createNotificationChannel();
+
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await initNotifications(); // Inicializa el plugin y zona horaria
 
   tz.initializeTimeZones();
   tz.setLocalLocation(

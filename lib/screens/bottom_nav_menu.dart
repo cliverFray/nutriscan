@@ -6,12 +6,22 @@ import 'nutri_recom.dart';
 import 'perfil_screen.dart';
 
 class BottomNavMenu extends StatefulWidget {
+  final int initialIndex;
+
+  BottomNavMenu({this.initialIndex = 0}); // Por defecto 0
+
   @override
   _BottomNavMenuState createState() => _BottomNavMenuState();
 }
 
 class _BottomNavMenuState extends State<BottomNavMenu> {
-  int _selectedIndex = 0;
+  late int _selectedIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedIndex = widget.initialIndex;
+  }
 
   // Lista de los widgets que corresponden a cada sección
   final List<Widget> _widgetOptions = [

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/user_service.dart';
 import '../../widgets/custom_elevated_buton.dart';
+import '../login_screen.dart';
 import 'new_password_screen.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
@@ -39,6 +40,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   );
   final UserService _userService = UserService();
   String? otpError;
+  bool _isVerifying = false;
 
   // Función para validar y verificar el OTP
   void _validateAndVerifyOtp() {
@@ -53,12 +55,26 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     });
 
     if (otpError == null) {
+      setState(() {
+        _isVerifying = true; // 🔥 MIENTRAS ESPERA, ACTIVAR CARGA
+      });
       final verificationMethod = widget.otpType == "identity_verification"
           ? _userService.verifyIdentityCode
           : _userService.verifyPasswordResetCode;
 
+      setState(() {
+        _isVerifying = false; // 🔥 DETENER CARGA
+      });
+
       verificationMethod(widget.phone, otp).then((result) {
         if (result == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Codigo verificado correctamente"),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
           if (widget.otpType == "password_reset") {
             // Navegar a la pantalla de cambio de contraseña en caso de restablecimiento de contraseña
             Navigator.push(
@@ -75,9 +91,13 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             widget.onOtpVerified();
           }
         } else {
-          setState(() {
-            otpError = result;
-          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
         }
       });
     }
@@ -136,63 +156,116 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Color(0xFFFFFFFF),
-      appBar: AppBar(
-        title: Text('Verificar Código OTP'),
-        backgroundColor: Color(0xFF83B56A),
-        foregroundColor: Colors.white,
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(height: 16),
-              Text(
-                'Hemos enviado el código de 6 dígitos por SMS',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 20),
-
-              // Cuadros de entrada para OTP
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(6, (index) => _buildOtpField(index)),
-              ),
-              if (otpError != null) ...[
-                SizedBox(height: 8),
+    return PopScope(
+      canPop: false, // false para bloquear el retroceso
+      child: Scaffold(
+        backgroundColor: Color(0xFFFFFFFF),
+        appBar: AppBar(
+          title: Text('Verificar Código OTP'),
+          centerTitle: true,
+          backgroundColor: Color(0xFF83B56A),
+          foregroundColor: Colors.white,
+          automaticallyImplyLeading:
+              false, // 2️⃣ QUITA EL BOTÓN ATRÁS EN EL APPBAR
+        ),
+        body: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(height: 16),
                 Text(
-                  otpError!,
-                  style: TextStyle(color: Colors.red),
+                  'Hemos enviado el código de 6 dígitos por SMS y correo',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(6, (index) => _buildOtpField(index)),
+                ),
+                if (otpError != null) ...[
+                  SizedBox(height: 8),
+                  Text(
+                    otpError!,
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ],
+                SizedBox(height: 24),
+
+                // Botón "Verificar"
+                // Botón "Verificar"
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isVerifying ? null : _validateAndVerifyOtp,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF83B56A),
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: _isVerifying
+                        ? SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Text('Verificar'),
+                  ),
+                ),
+
+                // Botón "Reenviar Código"
+                TextButton(
+                  onPressed: _resendOtp,
+                  child: Text('Reenviar Código'),
+                  style: ButtonStyle(
+                    foregroundColor: WidgetStatePropertyAll(Color(0xFF83B56A)),
+                  ),
+                ),
+
+                // 1️⃣ BOTÓN "CANCELAR"
+                SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () {
+                      // Usamos pushAndRemoveUntil para borrar el historial de navegación
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              LoginScreen(), // Tu pantalla destino
+                        ),
+                        (Route<dynamic> route) =>
+                            false, // Esto borra TODA la pila de navegación
+                      );
+                    },
+                    style: ButtonStyle(
+                      foregroundColor: WidgetStatePropertyAll(Colors.grey),
+                      side: WidgetStatePropertyAll(
+                          BorderSide(color: Colors.grey)),
+                      overlayColor: WidgetStateProperty.resolveWith<Color?>(
+                        (Set<WidgetState> states) {
+                          if (states.contains(WidgetState.pressed)) {
+                            return Colors.grey.withOpacity(0.5);
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    child: Text('Cancelar'),
+                  ),
                 ),
               ],
-              SizedBox(height: 24),
-
-              // Botón "Verificar"
-
-              SizedBox(
-                width: double.infinity,
-                child: CustomElevatedButton(
-                  onPressed: _validateAndVerifyOtp,
-                  text: 'Verificar',
-                ),
-              ),
-              TextButton(
-                onPressed: _resendOtp, // Llama al método de reenvío,
-                child: Text('Reenviar Código'),
-                style: ButtonStyle(
-                  foregroundColor:
-                      WidgetStatePropertyAll(Color(0xFF83B56A)), // Color verde
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

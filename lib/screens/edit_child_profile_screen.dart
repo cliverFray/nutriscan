@@ -5,6 +5,7 @@ import '../services/child_service.dart';
 import '../widgets/custom_dropdown.dart';
 import '../widgets/custom_elevated_buton.dart';
 import '../widgets/custom_text_input.dart';
+import 'manage_child_profile_screen.dart';
 
 class EditChildProfileScreen extends StatefulWidget {
   final int childId; // Solo el ID del niño para editar
@@ -69,9 +70,49 @@ class _EditChildProfileScreenState extends State<EditChildProfileScreen> {
   }
 
   bool _isBirthDateValid(String birthDate) {
+    final regex = RegExp(r'^(\d{2})/(\d{2})/(\d{4})$');
+    final match = regex.firstMatch(birthDate);
+
+    if (match == null) {
+      return false; // No coincide con el patrón dd/MM/yyyy
+    }
+
+    final day = int.tryParse(match.group(1)!);
+    final month = int.tryParse(match.group(2)!);
+    final year = int.tryParse(match.group(3)!);
+
+    if (day == null || month == null || year == null) {
+      return false;
+    }
+
+    // Reglas de rangos válidos
+    if (month < 1 || month > 12) return false;
+    if (day < 1 || day > 31)
+      return false; // luego verificamos días reales por mes
+
+    try {
+      final parsedDate = DateTime(year, month, day);
+      if (parsedDate.year != year ||
+          parsedDate.month != month ||
+          parsedDate.day != day) {
+        return false; // No existe esta fecha
+      }
+      return parsedDate.isBefore(DateTime.now());
+    } catch (_) {
+      return false;
+    }
+  }
+
+  bool _isUnderFiveYearsOld(String birthDate) {
     try {
       DateTime date = DateFormat('dd/MM/yyyy', 'es_PE').parse(birthDate);
-      return date.isBefore(DateTime.now());
+      DateTime today = DateTime.now();
+      int ageYears = today.year - date.year;
+      if (today.month < date.month ||
+          (today.month == date.month && today.day < date.day)) {
+        ageYears--;
+      }
+      return ageYears <= 5;
     } catch (_) {
       return false;
     }
@@ -79,6 +120,12 @@ class _EditChildProfileScreenState extends State<EditChildProfileScreen> {
 
   // Función para validar y actualizar la información del niño
   // Validar y actualizar la información del niño
+
+  bool _containsOnlyLetters(String input) {
+    final regex = RegExp(r"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$");
+    return regex.hasMatch(input);
+  }
+
   void _validateAndUpdate() async {
     String names = namesController.text;
     String lastName = lastNameController.text;
@@ -89,16 +136,27 @@ class _EditChildProfileScreenState extends State<EditChildProfileScreen> {
     setState(() {
       genderError =
           _selectedGender == null ? 'Debe seleccionar un género.' : null;
-      nameError = names.isEmpty ? 'El campo Nombres es obligatorio.' : null;
-      lastNameError =
-          lastName.isEmpty ? 'El campo Apellidos es obligatorio.' : null;
+
+      nameError = names.isEmpty
+          ? 'El campo Nombres es obligatorio.'
+          : !_containsOnlyLetters(names)
+              ? 'Solo se permiten letras en el campo Nombres.'
+              : null;
+
+      lastNameError = lastName.isEmpty
+          ? 'El campo Apellidos es obligatorio.'
+          : !_containsOnlyLetters(lastName)
+              ? 'Solo se permiten letras en el campo Apellidos.'
+              : null;
+
       birthDateError = birthDate.isEmpty
           ? 'El campo Fecha de nacimiento es obligatorio.'
-          : _isBirthDateValid(birthDate)
-              ? null
-              : 'Fecha de nacimiento no válida';
+          : !_isBirthDateValid(birthDate)
+              ? 'Fecha de nacimiento no válida'
+              : !_isUnderFiveYearsOld(birthDate)
+                  ? 'El niño debe tener menor o igual a 5 años.'
+                  : null;
 
-      // Validar peso y talla si no están vacíos
       weightError = (weight.isNotEmpty &&
               (double.tryParse(weight) == null || double.parse(weight) <= 0))
           ? 'Peso no válido'
@@ -130,6 +188,7 @@ class _EditChildProfileScreenState extends State<EditChildProfileScreen> {
       String? responseMessage = await _childService.updateChild(updatedChild);
 
       if (responseMessage == null) {
+        Navigator.pop(context, true); // Cerramos el diálogo y notificamos éxito
         _showSuccess();
       } else {
         _showError(responseMessage);
@@ -153,8 +212,7 @@ class _EditChildProfileScreenState extends State<EditChildProfileScreen> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).pop(); // Regresar a la pantalla anterior
+                Navigator.of(context).pop(); // Cierra el AlertDialog
               },
               child: Text('Cerrar'),
             ),
@@ -271,13 +329,29 @@ class _EditChildProfileScreenState extends State<EditChildProfileScreen> {
                       hintText: 'Peso en kg',
                       controller: weightController,
                       keyboardType: TextInputType.number,
+                      onTap: () {
+                        setState(() {
+                          weightError = null; // Eliminar error al enfocar
+                        });
+                      },
                     ),
+                    if (weightError != null) ...[
+                      Text(weightError!, style: TextStyle(color: Colors.red)),
+                    ],
                     SizedBox(height: 16),
                     CustomTextInput(
                       hintText: 'Talla en cm',
                       controller: heightController,
                       keyboardType: TextInputType.number,
+                      onTap: () {
+                        setState(() {
+                          heightError = null; // Eliminar error al enfocar
+                        });
+                      },
                     ),
+                    if (heightError != null) ...[
+                      Text(heightError!, style: TextStyle(color: Colors.red)),
+                    ],
                     SizedBox(height: 24),
                     CustomElevatedButton(
                       onPressed: _validateAndUpdate,

@@ -18,6 +18,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   String? emailError;
   final UserService _userService = UserService(); // Instancia del servicio
 
+  bool _isLoading = false; // Loader
+
   // Función para validar y continuar con la recuperación de contraseña
   void _validateAndRegister() async {
     String phone = phoneController.text;
@@ -35,6 +37,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     });
 
     if (phoneError == null && emailError == null) {
+      // Mostrar loader
+      setState(() {
+        _isLoading = true;
+      });
       String? responseMessage =
           await _userService.requestPasswordResetCode(phone, email);
 
@@ -42,7 +48,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         // Mostrar snackbar de éxito
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Código enviado exitosamente al correo ingresado.'),
+            content: Text(
+                'Código enviado exitosamente al numero de telefono y correo ingresado.'),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
           ),
@@ -59,6 +66,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ),
         );
       } else {
+        // Ocultar loader
+        setState(() {
+          _isLoading = false;
+        });
         _showError(responseMessage);
       }
     }
@@ -100,85 +111,92 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Color(0xFFFFFFFF),
-      appBar: AppBar(
-        title: Text('Recuperar Contraseña'),
-        backgroundColor: Color(0xFF83B56A),
-        foregroundColor: Colors.white,
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(height: 16),
-              Text(
-                'Introduce tu número de teléfono y correo',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
+    return Stack(
+      children: [
+        Scaffold(
+          backgroundColor: Color(0xFFFFFFFF),
+          appBar: AppBar(
+            title: Text('Recuperar Contraseña'),
+            backgroundColor: Color(0xFF83B56A),
+            foregroundColor: Colors.white,
+          ),
+          body: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(height: 16),
+                  Text(
+                    'Introduce tu número de teléfono y correo',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  CustomTextInput(
+                    hintText: 'Número de Teléfono',
+                    controller: phoneController,
+                    keyboardType: TextInputType.phone,
+                    suffixIcon: Icon(
+                      Icons.phone,
+                      color: Color(0xFF83B56A),
+                    ),
+                    onTap: () {
+                      setState(() {
+                        phoneError = null;
+                      });
+                    },
+                  ),
+                  if (phoneError != null) ...[
+                    Text(
+                      phoneError!,
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ],
+                  SizedBox(height: 16),
+                  CustomTextInput(
+                    hintText: 'Correo Electrónico',
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    suffixIcon: Icon(
+                      Icons.email,
+                      color: Color(0xFF83B56A),
+                    ),
+                    onTap: () {
+                      setState(() {
+                        emailError = null;
+                      });
+                    },
+                  ),
+                  if (emailError != null) ...[
+                    Text(
+                      emailError!,
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ],
+                  SizedBox(height: 24),
+                  CustomElevatedButton(
+                    onPressed: _validateAndRegister,
+                    text: 'Continuar',
+                  ),
+                ],
               ),
-              SizedBox(height: 16),
-
-              // Input para número de teléfono
-              CustomTextInput(
-                hintText: 'Número de Teléfono',
-                controller: phoneController,
-                keyboardType: TextInputType.phone,
-                suffixIcon: Icon(
-                  Icons.phone,
-                  color: Color(0xFF83B56A),
-                ),
-                onTap: () {
-                  setState(() {
-                    phoneError = null;
-                  });
-                },
-              ),
-              if (phoneError != null) ...[
-                Text(
-                  phoneError!,
-                  style: TextStyle(color: Colors.red),
-                ),
-              ],
-              SizedBox(height: 16),
-
-              // Input para correo electrónico
-              CustomTextInput(
-                hintText: 'Correo Electrónico',
-                controller: emailController,
-                keyboardType: TextInputType.emailAddress,
-                suffixIcon: Icon(
-                  Icons.email,
-                  color: Color(0xFF83B56A),
-                ),
-                onTap: () {
-                  setState(() {
-                    emailError = null;
-                  });
-                },
-              ),
-              if (emailError != null) ...[
-                Text(
-                  emailError!,
-                  style: TextStyle(color: Colors.red),
-                ),
-              ],
-              SizedBox(height: 24),
-
-              // Botón "Continuar"
-              CustomElevatedButton(
-                onPressed: _validateAndRegister,
-                text: 'Continuar',
-              ),
-            ],
+            ),
           ),
         ),
-      ),
+        if (_isLoading)
+          Container(
+            color: Colors.black.withOpacity(0.3),
+            child: Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFF83B56A),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

@@ -22,6 +22,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
   bool isLoading = true; // Nuevo estado de carga
   final UserService _userService = UserService();
 
+  bool _isLoggingOut = false; //
+
   @override
   void initState() {
     super.initState();
@@ -86,8 +88,43 @@ class _PerfilScreenState extends State<PerfilScreen> {
     );
   }
 
+  void _showLoadingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // No permite cerrarlo tocando fuera
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Text("Cerrando sesión..."),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _logout() async {
+    if (_isLoggingOut) return; // Evita múltiples llamadas
+    setState(() {
+      _isLoggingOut = true; // Inicia el estado de cierre de sesión
+    });
+
+    // ✅ Muestra el loader
+    _showLoadingDialog();
+
     final result = await _userService.logoutUser(); // Cierra sesión
+    // ✅ Cierra el loader
+    Navigator.of(context, rootNavigator: true).pop();
+
+    setState(() {
+      _isLoggingOut = false; // Finaliza el estado de cierre
+    });
 
     if (result == null) {
       // Logout exitoso
@@ -176,9 +213,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => EditUserProfileScreen(),
-                                ),
-                              );
+                                    builder: (context) =>
+                                        EditUserProfileScreen()),
+                              ).then((_) => _loadUser());
                             }
                           },
                         ),
@@ -249,9 +286,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
                               style: TextStyle(fontSize: 18)),
                           trailing:
                               Icon(Icons.arrow_forward_ios, color: Colors.grey),
-                          onTap: () async {
-                            await _logout();
-                          },
+                          onTap: _isLoggingOut
+                              ? null // Desactiva el botón mientras cierra sesión
+                              : () async {
+                                  await _logout();
+                                },
                         ),
                       ],
                     ),

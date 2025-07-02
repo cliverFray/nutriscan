@@ -46,38 +46,112 @@ class _SignInScreenState extends State<SignInScreen> {
 
   //funcion para validar el formato del correo electronico
 
+  @override
+  void initState() {
+    super.initState();
+
+    passwordController.addListener(() {
+      validatePassword();
+    });
+  }
+
   bool isValidEmail(String email) {
     return RegExp(r"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$").hasMatch(email);
+  }
+
+  void validatePassword() {
+    final password = passwordController.text.trim();
+
+    final hasMinLength = password.length >= 8;
+    final hasUppercase = password.contains(RegExp(r'[A-Z]'));
+    final hasSpecialChar =
+        password.contains(RegExp(r'[!@#\$%^&*(),.?":{}|<>]'));
+    final hasNumber = password.contains(RegExp(r'\d'));
+
+    setState(() {
+      passwordError = (password.isNotEmpty && !hasMinLength)
+          ? "La contraseña debe tener al menos 8 caracteres."
+          : (password.isNotEmpty && !hasUppercase)
+              ? "La contraseña debe tener al menos una letra mayúscula."
+              : (password.isNotEmpty && !hasSpecialChar)
+                  ? "La contraseña debe tener al menos un carácter especial."
+                  : (password.isNotEmpty && !hasNumber)
+                      ? "La contraseña debe tener al menos un número."
+                      : null;
+    });
   }
 
   // Función para validar campos
   void validateFields() {
     setState(() {
-      nameError =
-          namesController.text.isEmpty ? "Por favor, ingrese su nombre." : null;
-      lastNameError = lastNameController.text.isEmpty
-          ? "Por favor, ingrese su apellido."
-          : null;
-      passwordError = passwordController.text.isEmpty
-          ? "Por favor, ingrese una contraseña."
-          : null;
-      dniError = dniController.text.isEmpty || dniController.text.length != 8
-          ? "El DNI debe tener 8 dígitos."
-          : null;
-      phoneError =
-          phoneController.text.isEmpty || phoneController.text.length != 9
-              ? "El número de teléfono debe tener 9 dígitos."
-              : null;
-      emailError = emailController.text.isEmpty
-          ? "Por favor, ingrese su correo."
-          : (!isValidEmail(emailController.text)
-              ? "Dirección de correo no válida."
-              : null);
-      placeError = placeController.text.isEmpty
-          ? "Por favor, ingrese su lugar de residencia."
-          : null;
+      // Nombres
+      String names = namesController.text.trim();
+      if (names.isEmpty) {
+        nameError = "Por favor, ingrese su nombre.";
+      } else if (!RegExp(r"^[A-Za-zÁÉÍÓÚáéíóúñÑ ]{2,64}$").hasMatch(names)) {
+        nameError = "El nombre debe tener solo letras (2–64 caracteres).";
+      } else {
+        nameError = null;
+      }
 
-      // Validación de términos y condiciones
+      // Apellidos
+      String lastNames = lastNameController.text.trim();
+      if (lastNames.isEmpty) {
+        lastNameError = "Por favor, ingrese su apellido.";
+      } else if (!RegExp(r"^[A-Za-zÁÉÍÓÚáéíóúñÑ ]{2,64}$")
+          .hasMatch(lastNames)) {
+        lastNameError = "El apellido debe tener solo letras (2–64 caracteres).";
+      } else {
+        lastNameError = null;
+      }
+
+      validatePassword();
+
+      // DNI
+      String dni = dniController.text.trim();
+      if (dni.isEmpty) {
+        dniError = "Por favor, ingrese su DNI.";
+      } else if (!RegExp(r"^\d{8}$").hasMatch(dni)) {
+        dniError = "El DNI debe tener exactamente 8 dígitos.";
+      } else {
+        dniError = null;
+      }
+
+      // Teléfono
+      String phone = phoneController.text.trim();
+      if (phone.isEmpty) {
+        phoneError = "Por favor, ingrese su número de teléfono.";
+      } else if (!RegExp(r"^9\d{8}$").hasMatch(phone)) {
+        phoneError =
+            "El número debe tener 9 dígitos y comenzar con 9 (ej. 9XXXXXXXX).";
+      } else {
+        phoneError = null;
+      }
+
+      // Correo electrónico
+      String email = emailController.text.trim();
+      if (email.isEmpty) {
+        emailError = "Por favor, ingrese su correo.";
+      } else if (!isValidEmail(email)) {
+        emailError = "Dirección de correo no válida.";
+      } else {
+        emailError = null;
+      }
+
+      // Lugar de residencia
+      String place = placeController.text.trim();
+      if (place.isEmpty) {
+        placeError = "Por favor, ingrese su lugar de residencia.";
+      } else if (place.length > 100) {
+        placeError = "La longitud máxima es de 100 caracteres.";
+      } else if (RegExp(r"^[^\w\sáéíóúÁÉÍÓÚñÑ]+$").hasMatch(place)) {
+        // Solo símbolos
+        placeError = "El lugar de residencia no puede contener solo símbolos.";
+      } else {
+        placeError = null;
+      }
+
+      // Términos y condiciones
       termsError =
           !acceptedTerms ? "Debe aceptar los términos y condiciones." : null;
 
@@ -120,15 +194,23 @@ class _SignInScreenState extends State<SignInScreen> {
 
       // Es éxito, tenemos el Map
       final codigo = response['codigo'];
-      final smsEnviado = response['smsEnviado'] ?? false;
-      final correoEnviado = response['correoEnviado'] ?? false;
+      bool smsEnviado = response['smsEnviado'] ?? false;
+      bool correoEnviado = response['correoEnviado'] ?? false;
       final mensaje = response['mensaje'] ?? '';
 
       String advertencia = '';
+      //correoEnviado = false;
+      //smsEnviado = false;
       if (!smsEnviado && correoEnviado) {
-        advertencia = 'El código solo fue enviado por correo.';
+        advertencia =
+            'El código solo fue enviado por correo. Ingrese un numero de telefono valido';
       } else if (smsEnviado && !correoEnviado) {
-        advertencia = 'El código solo fue enviado por SMS.';
+        advertencia =
+            'El código solo fue enviado por SMS. Ingrese un correo valido';
+      } else if (!smsEnviado && !correoEnviado) {
+        _showError(
+            'No se pudo enviar el código por SMS ni por correo. Ingrese un correo y telefono validos');
+        return;
       }
 
       if (advertencia.isNotEmpty) {
@@ -178,25 +260,30 @@ class _SignInScreenState extends State<SignInScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('¡Cuenta creada exitosamente!'),
-            duration: Duration(seconds: 5),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 10),
           ),
         );
         // Espera un momento para que el usuario vea el mensaje
         await Future.delayed(Duration(seconds: 2));
-        Navigator.pushReplacement(
+        Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(
-            builder: (context) => BottomNavMenu(),
+            builder: (context) => BottomNavMenu(), // Tu pantalla destino
           ),
+          (Route<dynamic> route) =>
+              false, // Esto borra TODA la pila de navegación
         );
       } else {
         // Si el inicio de sesión falla, redirigimos al Login o mostramos un mensaje de error
         _showError(loginError);
-        Navigator.pushReplacement(
+        Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(
-            builder: (context) => LoginScreen(),
+            builder: (context) => LoginScreen(), // Tu pantalla destino
           ),
+          (Route<dynamic> route) =>
+              false, // Esto borra TODA la pila de navegación
         );
       }
     } else {
@@ -212,7 +299,8 @@ class _SignInScreenState extends State<SignInScreen> {
       SnackBar(
         content: Text(message),
         backgroundColor: Colors.orange,
-        duration: Duration(seconds: 5),
+        duration: Duration(seconds: 8),
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }
@@ -223,6 +311,7 @@ class _SignInScreenState extends State<SignInScreen> {
         content: Text(message),
         backgroundColor: Colors.green,
         duration: Duration(seconds: 5),
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }
@@ -327,6 +416,7 @@ class _SignInScreenState extends State<SignInScreen> {
                     _isPasswordVisible = !_isPasswordVisible;
                   });
                 },
+                errorText: passwordError, // 👈 Aquí le pasas el error
               ),
               SizedBox(height: 16),
 

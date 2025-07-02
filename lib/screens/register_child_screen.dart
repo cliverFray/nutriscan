@@ -33,6 +33,7 @@ class _RegisterChildScreenState extends State<RegisterChildScreen> {
   String? birthDateError;
   String? weightError;
   String? heightError;
+  String? genderError;
   bool _isLoading = false;
 
   // Función para mostrar el selector de fecha
@@ -64,41 +65,90 @@ class _RegisterChildScreenState extends State<RegisterChildScreen> {
   }
 
   bool _isBirthDateValid(String birthDate) {
+    final regex = RegExp(r'^(\d{2})/(\d{2})/(\d{4})$');
+    final match = regex.firstMatch(birthDate);
+
+    if (match == null) {
+      return false; // No coincide con el patrón dd/MM/yyyy
+    }
+
+    final day = int.tryParse(match.group(1)!);
+    final month = int.tryParse(match.group(2)!);
+    final year = int.tryParse(match.group(3)!);
+
+    if (day == null || month == null || year == null) {
+      return false;
+    }
+
+    // Reglas de rangos válidos
+    if (month < 1 || month > 12) return false;
+    if (day < 1 || day > 31)
+      return false; // luego verificamos días reales por mes
+
     try {
-      DateTime date = DateFormat('dd/MM/yyyy', 'es_PE').parse(birthDate);
-      return date.isBefore(DateTime.now());
+      final parsedDate = DateTime(year, month, day);
+      if (parsedDate.year != year ||
+          parsedDate.month != month ||
+          parsedDate.day != day) {
+        return false; // No existe esta fecha
+      }
+      return parsedDate.isBefore(DateTime.now());
     } catch (_) {
       return false;
     }
   }
 
+  bool _isUnderFiveYearsOld(String birthDate) {
+    try {
+      DateTime date = DateFormat('dd/MM/yyyy', 'es_PE').parse(birthDate);
+      DateTime today = DateTime.now();
+      int ageYears = today.year - date.year;
+      if (today.month < date.month ||
+          (today.month == date.month && today.day < date.day)) {
+        ageYears--;
+      }
+      return ageYears <= 5;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  bool _containsOnlyLetters(String input) {
+    final regex = RegExp(r"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$");
+    return regex.hasMatch(input);
+  }
+
   // Función para validar y registrar
   void _validateAndRegister() async {
-    String names = namesController.text;
-    String lastName = lastNameController.text;
-    String birthDate = birthDateController.text;
-    String weight = weightController.text;
-    String height = heightController.text;
+    String names = namesController.text.trim();
+    String lastName = lastNameController.text.trim();
+    String birthDate = birthDateController.text.trim();
+    String weight = weightController.text.trim();
+    String height = heightController.text.trim();
 
     setState(() {
-      // Limpiar errores previos
-      nameError = null;
-      lastNameError = null;
-      birthDateError = null;
-      weightError = null;
-      heightError = null;
+      genderError =
+          _selectedGender == null ? 'Debe seleccionar un género.' : null;
 
-      if (names.isEmpty) {
-        nameError = 'El campo Nombres es obligatorio.';
-      }
-      if (lastName.isEmpty) {
-        lastNameError = 'El campo Apellidos es obligatorio.';
-      }
+      nameError = names.isEmpty
+          ? 'El campo Nombres es obligatorio.'
+          : !_containsOnlyLetters(names)
+              ? 'Solo se permiten letras en el campo Nombres.'
+              : null;
+
+      lastNameError = lastName.isEmpty
+          ? 'El campo Apellidos es obligatorio.'
+          : !_containsOnlyLetters(lastName)
+              ? 'Solo se permiten letras en el campo Apellidos.'
+              : null;
+
       birthDateError = birthDate.isEmpty
           ? 'El campo Fecha de nacimiento es obligatorio.'
-          : _isBirthDateValid(birthDate)
-              ? null
-              : 'Fecha de nacimiento no válida';
+          : !_isBirthDateValid(birthDate)
+              ? 'Fecha de nacimiento no válida'
+              : !_isUnderFiveYearsOld(birthDate)
+                  ? 'El niño debe tener menor o igual a 5 años.'
+                  : null;
 
       weightError = (weight.isNotEmpty &&
               (double.tryParse(weight) == null || double.parse(weight) <= 0))
@@ -111,36 +161,41 @@ class _RegisterChildScreenState extends State<RegisterChildScreen> {
           : null;
     });
 
-    // Si no hay errores en los campos obligatorios
-    if (nameError == null && lastNameError == null && birthDateError == null) {
+    // Solo proceder si no hay errores visibles
+    if (nameError == null &&
+        lastNameError == null &&
+        birthDateError == null &&
+        weightError == null &&
+        heightError == null &&
+        _selectedGender != null) {
+      setState(() {
+        _isLoading = true;
+      });
       try {
         DateTime parsedDate =
             DateFormat('dd/MM/yyyy', 'es_PE').parse(birthDate);
         String formattedBirthDate = DateFormat('yyyy-MM-dd').format(parsedDate);
-        // Convertir los datos en el modelo Child
         Child newChild = Child(
-          childId: 0, // Dependerá del backend asignar un ID al nuevo registro
+          childId: 0,
           childName: names,
           childLastName: lastName,
-          childBirthDate:
-              DateTime.parse(formattedBirthDate), // Almacena la fecha
+          childBirthDate: DateTime.parse(formattedBirthDate),
           childAgeMonth: _calculateAgeInMonths(birthDate),
           childGender: _selectedGender == 'Masculino',
           childCurrentWeight: weight.isEmpty ? null : double.parse(weight),
           childCurrentHeight: height.isEmpty ? null : double.parse(height),
         );
 
-        // Llamar al servicio para registrar al niño
         String? responseMessage = await _childService.registerChild(newChild);
         setState(() {
           _isLoading = false;
         });
 
         if (responseMessage == null) {
-          // Registro exitoso, mostrar mensaje y navegar
+          Navigator.pop(
+              context, true); // Cerramos el diálogo y notificamos éxito
           _showSuccess();
         } else {
-          // Muestra el error si falla
           _showError(responseMessage);
         }
       } catch (e) {
@@ -149,10 +204,6 @@ class _RegisterChildScreenState extends State<RegisterChildScreen> {
         });
         _showError("Ocurrió un error inesperado.");
       }
-    } else {
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 
@@ -177,8 +228,6 @@ class _RegisterChildScreenState extends State<RegisterChildScreen> {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
-
-                Navigator.of(context).pop();
               },
               child: Text('Cerrar'),
             ),
@@ -199,8 +248,6 @@ class _RegisterChildScreenState extends State<RegisterChildScreen> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop();
-
                 Navigator.of(context).pop();
               },
               child: Text('Cerrar'),
@@ -315,9 +362,13 @@ class _RegisterChildScreenState extends State<RegisterChildScreen> {
                 onChanged: (value) {
                   setState(() {
                     _selectedGender = value;
+                    genderError = null; // Eliminar error al enfocar
                   });
                 },
               ),
+              if (genderError != null) ...[
+                Text(genderError!, style: TextStyle(color: Colors.red)),
+              ],
               SizedBox(height: 16),
 
               // Peso (opcional)
@@ -331,7 +382,15 @@ class _RegisterChildScreenState extends State<RegisterChildScreen> {
                 hintText: 'Peso en kg',
                 controller: weightController,
                 keyboardType: TextInputType.number,
+                onTap: () {
+                  setState(() {
+                    weightError = null; // Eliminar error al enfocar
+                  });
+                },
               ),
+              if (weightError != null) ...[
+                Text(weightError!, style: TextStyle(color: Colors.red)),
+              ],
               SizedBox(height: 16),
 
               // Talla (opcional)
@@ -345,7 +404,15 @@ class _RegisterChildScreenState extends State<RegisterChildScreen> {
                 hintText: 'Talla en cm',
                 controller: heightController,
                 keyboardType: TextInputType.number,
+                onTap: () {
+                  setState(() {
+                    heightError = null; // Eliminar error al enfocar
+                  });
+                },
               ),
+              if (heightError != null) ...[
+                Text(heightError!, style: TextStyle(color: Colors.red)),
+              ],
               SizedBox(height: 16),
 
               // Botón de registrar

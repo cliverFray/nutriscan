@@ -1,7 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import '../utils/scheduleMonthlyNotification.dart'; // Tu función existente
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:app_settings/app_settings.dart';
+
+import '../utils/scheduleMonthlyNotification.dart'; // Tu función para agendar la notificación
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -15,7 +20,8 @@ class NotificationsSettingsScreen extends StatefulWidget {
 class _NotificationsSettingsScreenState
     extends State<NotificationsSettingsScreen> {
   bool enableNotifications = true;
-  bool dailyTips = false;
+  bool cameraPermission = false;
+  bool galleryPermission = false;
 
   @override
   void initState() {
@@ -27,18 +33,16 @@ class _NotificationsSettingsScreenState
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       enableNotifications = prefs.getBool('enableNotifications') ?? true;
-      dailyTips = prefs.getBool('dailyTips') ?? false;
+      cameraPermission = prefs.getBool('cameraPermission') ?? false;
+      galleryPermission = prefs.getBool('galleryPermission') ?? false;
     });
-
-    if (enableNotifications) {
-      scheduleMonthlyNotification(context);
-    }
   }
 
   Future<void> _savePreferences() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('enableNotifications', enableNotifications);
-    await prefs.setBool('dailyTips', dailyTips);
+    await prefs.setBool('cameraPermission', cameraPermission);
+    await prefs.setBool('galleryPermission', galleryPermission);
   }
 
   void _showSnackBar(String message, {bool isError = false}) {
@@ -50,18 +54,36 @@ class _NotificationsSettingsScreenState
     ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
 
-  Future<void> _onEnableNotificationsChanged(bool value) async {
-    setState(() {
-      enableNotifications = value;
-      if (!value) {
-        dailyTips = false;
+  Future<bool> requestNotificationPermissionIfNeeded() async {
+    if (Platform.isAndroid) {
+      final info = await DeviceInfoPlugin().androidInfo;
+      if (info.version.sdkInt >= 33) {
+        final androidPlugin = flutterLocalNotificationsPlugin
+            .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin>();
+        final granted = await androidPlugin?.requestNotificationsPermission();
+        return granted ?? false;
       }
+    }
+    return true; // permisos concedidos automáticamente en Android <13
+  }
+
+  Future<void> _onEnableNotificationsChanged(bool value) async {
+    bool granted = true;
+
+    if (value) {
+      granted = await requestNotificationPermissionIfNeeded();
+    }
+
+    setState(() {
+      enableNotifications = value && granted;
     });
+
     await _savePreferences();
 
     try {
       if (enableNotifications) {
-        await scheduleMonthlyNotification(context);
+        await scheduleMonthlyReminder(); // Agenda notificación mensual
         _showSnackBar('Notificaciones habilitadas');
       } else {
         await flutterLocalNotificationsPlugin.cancelAll();
@@ -70,25 +92,28 @@ class _NotificationsSettingsScreenState
     } catch (e) {
       _showSnackBar('Error al actualizar notificaciones', isError: true);
     }
+
+    if (!granted) {
+      _showSnackBar('Permiso de notificación no concedido', isError: true);
+      AppSettings.openAppSettings();
+    }
   }
 
-  Future<void> _onDailyTipsChanged(bool value) async {
-    setState(() {
-      dailyTips = value;
-    });
+  void _onCameraPermissionChanged(bool value) async {
+    setState(() => cameraPermission = value);
     await _savePreferences();
+  }
 
-    // Aquí solo guardamos, aún no programamos tips diarios (opcional después)
-    _showSnackBar(
-        dailyTips ? 'Tips diarios habilitados' : 'Tips diarios deshabilitados',
-        isError: false);
+  void _onGalleryPermissionChanged(bool value) async {
+    setState(() => galleryPermission = value);
+    await _savePreferences();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Notificaciones'),
+        title: Text('Notificaciones y permisos'),
         backgroundColor: Color(0xFF83B56A),
       ),
       body: ListView(
@@ -99,12 +124,16 @@ class _NotificationsSettingsScreenState
             value: enableNotifications,
             onChanged: _onEnableNotificationsChanged,
           ),
-          if (enableNotifications)
-            SwitchListTile(
-              title: Text('Recibir Tips Diarios'),
-              value: dailyTips,
-              onChanged: _onDailyTipsChanged,
-            ),
+          SwitchListTile(
+            title: Text('Habilitar permiso a cámara'),
+            value: cameraPermission,
+            onChanged: _onCameraPermissionChanged,
+          ),
+          SwitchListTile(
+            title: Text('Habilitar permiso a galería'),
+            value: galleryPermission,
+            onChanged: _onGalleryPermissionChanged,
+          ),
         ],
       ),
     );

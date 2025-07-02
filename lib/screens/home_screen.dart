@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import '../services/user_service.dart';
 import '../models/user_profile.dart';
@@ -10,8 +12,15 @@ import '../utils/scheduleMonthlyNotification.dart';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'login_screen.dart';
+
+import 'package:app_settings/app_settings.dart';
+
+import 'package:device_info_plus/device_info_plus.dart'; // para API checks
+
+//final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -29,23 +38,56 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _fetchData();
-    // Programar recordatorio mensual después de renderizado
-    // Esperar a que el widget esté completamente montado antes de usar context
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        requestNotificationPermissions(); // <-- AÑADE ESTO
-        scheduleMonthlyNotification(context);
-      }
-    });
+    requestNotificationPermissionIfNeeded();
   }
 
-  Future<void> requestNotificationPermissions() async {
-    final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-    final androidPlugin =
-        flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
+  void abrirConfiguracionNotificaciones() {
+    AppSettings.openAppSettings();
+  }
 
-    await androidPlugin?.requestPermission();
+  Future<void> requestNotificationPermissionIfNeeded() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (Platform.isAndroid) {
+      final info = await DeviceInfoPlugin().androidInfo;
+      if (info.version.sdkInt >= 33) {
+        final androidPlugin = flutterLocalNotificationsPlugin
+            .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin>();
+
+        final granted = await androidPlugin?.requestNotificationsPermission();
+        if (granted == false) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("No se concedió permiso para las notificaciones"),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 6),
+              action: SnackBarAction(
+                label: "Ir a configuración",
+                textColor: Colors.white,
+                onPressed: () {
+                  abrirConfiguracionNotificaciones();
+                },
+              ),
+            ),
+          );
+          // Opcional: mostrar diálogo para guiar al usuario
+        } else {
+          // Solo mostrar si no se mostró antes
+          bool alreadyShown = prefs.getBool('notif_permission_shown') ?? false;
+          if (!alreadyShown) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text("Se concedió permiso para las notificaciones"),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 6),
+              ),
+            );
+            // Guardar que ya se mostró
+            await prefs.setBool('notif_permission_shown', true);
+          }
+        }
+      }
+    }
   }
 
   Future<void> _fetchData() async {
@@ -59,45 +101,26 @@ class _HomeScreenState extends State<HomeScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      print("Error fetching data: $e");
-    }
-  }
+      if (e.toString().contains('Token inválido') ||
+          e.toString().contains('token expired') ||
+          e.toString().contains('401')) {
+        // Actualiza el isLoggedIn a false
+        await _userService.clearTokens();
 
-  Future<void> showTestNotification(BuildContext context) async {
-    try {
-      const androidDetails = AndroidNotificationDetails(
-        'monthly_reminder',
-        'Recordatorio mensual',
-        channelDescription: 'Te recuerda actualizar los datos de tu hijo',
-        importance: Importance.max,
-        priority: Priority.high,
-      );
-
-      const notificationDetails = NotificationDetails(android: androidDetails);
-
-      await flutterLocalNotificationsPlugin.show(
-        1, // ID diferente al programado
-        'Prueba de notificación',
-        'Esto es una notificación de prueba.',
-        notificationDetails,
-      );
-    } catch (e) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('Error'),
-          content: Text('No se pudo mostrar la notificación de prueba. $e'),
-          actions: [
-            TextButton(
-              child: Text('Cerrar'),
-              onPressed: () => Navigator.of(context).pop(),
-            )
-          ],
-        ),
-      );
+        // Redirige al LoginScreen
+        if (mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => LoginScreen()),
+            (Route<dynamic> route) => false,
+          );
+        }
+      } else {
+        // Otros errores: mostrar como antes
+        setState(() {
+          _isLoading = false;
+        });
+        print("Error fetching data: $e");
+      }
     }
   }
 
@@ -105,61 +128,72 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : _nutritionTips.isEmpty
-              ? Center(
-                  child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                      Icon(Icons.error_outline, color: Colors.red, size: 60),
-                      SizedBox(height: 10),
-                      Text(
-                        "No se pudieron cargar los consejos nutricionales.\nPor favor, revisa tu conexión o vuelve a intentarlo.",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 16),
-                      ),
-                      SizedBox(height: 20),
-                    ]))
-              : Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+      body: RefreshIndicator(
+        onRefresh: _fetchData, // Aquí llamas a tu método
+        child: _isLoading
+            ? Center(child: CircularProgressIndicator())
+            : _nutritionTips.isEmpty
+                ? ListView(
+                    // OBLIGATORIO para que funcione el pull-to-refresh
                     children: [
-                      // Bienvenida al usuario
-                      Text(
-                        'Bienvenido, ${_userProfile?.userFirstName ?? ''}',
-                        style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black),
+                      Center(
+                        child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.error_outline,
+                                  color: Colors.red, size: 60),
+                              SizedBox(height: 10),
+                              Text(
+                                "No se pudieron cargar los consejos nutricionales.\nPor favor, revisa tu conexión o vuelve a intentarlo.",
+                                textAlign: TextAlign.center,
+                                style: TextStyle(fontSize: 16),
+                              ),
+                              SizedBox(height: 20),
+                            ]),
                       ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Detecta, nutre y crece',
-                        style: TextStyle(fontSize: 16, color: Colors.black54),
+                    ],
+                  )
+                : ListView(
+                    physics:
+                        AlwaysScrollableScrollPhysics(), // Para que siempre se pueda hacer pull-to-refresh
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Bienvenida al usuario
+                            Text(
+                              'Bienvenido, ${_userProfile?.userFirstName ?? ''}',
+                              style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Detecta, nutre y crece',
+                              style: TextStyle(
+                                  fontSize: 16, color: Colors.black54),
+                            ),
+                            SizedBox(height: 20),
+                            // Título de consejos prácticos
+                            Text(
+                              'Consejos prácticos',
+                              style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black),
+                            ),
+                            SizedBox(height: 16),
+                            _buildNutritionTipsCarousel(),
+                            SizedBox(height: 16),
+                          ],
+                        ),
                       ),
-                      SizedBox(height: 20),
-                      // Título de consejos prácticos
-                      Text(
-                        'Consejos prácticos',
-                        style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black),
-                      ),
-                      SizedBox(height: 16),
-                      // Cards rotativos de consejos prácticos
-                      _buildNutritionTipsCarousel(),
-                      SizedBox(height: 16),
-
-                      /* ElevatedButton(
-                        onPressed: () => showTestNotification(context),
-                        child: Text('Probar notificación inmediata'),
-                      ) */
                     ],
                   ),
-                ),
+      ),
     );
   }
 

@@ -67,6 +67,15 @@ class UserService {
       if (data.containsKey('non_field_errors')) {
         return data['non_field_errors'][0];
       }
+      if (data.containsKey('message')) {
+        return data['message'][0];
+      }
+      if (data.containsKey('warning')) {
+        return data['warning'][0];
+      }
+      if (data.containsKey('error')) {
+        return data['error'][0];
+      }
     }
     return 'Error desconocido';
   }
@@ -119,8 +128,7 @@ class UserService {
   // Método para obtener el perfil del usuario autenticado
   Future<UserProfile?> getUserProfile() async {
     try {
-      final response = await dioClient
-          .get('/user/profile/'); // Solo pasas el endpoint relativo
+      final response = await dioClient.get('/user/profile/');
 
       if (response.statusCode == 200) {
         return UserProfile.fromJson(response.data);
@@ -128,8 +136,16 @@ class UserService {
         throw Exception(
             'Error al obtener el perfil. Código de estado: ${response.statusCode}');
       }
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        // Lanza explícitamente el error 401
+        throw Exception('401');
+      } else {
+        throw Exception(
+            'Error de conexión: Conéctate a internet e inténtalo nuevamente.');
+      }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      throw Exception('Error desconocido: $e');
     }
   }
 
@@ -159,28 +175,30 @@ class UserService {
   // Método para actualizar los datos del usuario logueado
   Future<String?> updateUserProfile(UserUpdate user) async {
     try {
-      final response = await dioClient.put(
-        '/user/update/',
-        data: {
-          'user': {
-            'username': user.userPhone, // Si es necesario
-            'first_name': user.userFirstName,
-            'last_name': user.userLastName,
-            'email': user.userEmail,
-            'password': user.userPassword?.isNotEmpty == true
-                ? user.userPassword
-                : null,
-          },
-          'additional_info': {
-            'userDNI': user.userDNI,
-            'userPhone': user.userPhone,
-            'userPlace': user.userPlace,
-          }
-        },
-      );
+      final Map<String, dynamic> userMap = {
+        'username': user.userPhone,
+        'first_name': user.userFirstName,
+        'last_name': user.userLastName,
+        'email': user.userEmail,
+      };
+
+// Agrega la contraseña solo si se ingresó
+      if (user.userPassword?.isNotEmpty == true) {
+        userMap['password'] = user.userPassword!;
+      }
+
+      final data = {
+        'user': userMap,
+        'aditional_info': {
+          'userDNI': user.userDNI,
+          'userPlace': user.userPlace,
+        }
+      };
+
+      final response = await dioClient.put('/user/update/', data: data);
 
       if (response.statusCode == 200) {
-        return null; // Éxito
+        return null;
       } else {
         return _parseUpdateError(response.data);
       }
@@ -223,8 +241,23 @@ class UserService {
       } else {
         return response.data['error'] ?? 'Error desconocido';
       }
+    } on DioException catch (e) {
+      if (e.response != null && e.response?.data != null) {
+        // Intenta leer el mensaje de error del backend
+        final errorData = e.response?.data;
+        if (errorData is Map && errorData.containsKey('error')) {
+          return errorData['error'];
+        } else if (errorData is String) {
+          print(errorData);
+          return errorData;
+        } else {
+          return 'Error inesperado del servidor';
+        }
+      } else {
+        return 'Error de conexión: ${e.message}';
+      }
     } catch (e) {
-      return 'Error de conexión: $e';
+      return 'Error desconocido: $e';
     }
   }
 
@@ -241,8 +274,22 @@ class UserService {
       } else {
         return response.data['error'] ?? 'Error desconocido';
       }
+    } on DioException catch (e) {
+      if (e.response != null && e.response?.data != null) {
+        // Intenta leer el mensaje de error del backend
+        final errorData = e.response?.data;
+        if (errorData is Map && errorData.containsKey('error')) {
+          return errorData['error'];
+        } else if (errorData is String) {
+          return errorData;
+        } else {
+          return 'Error inesperado del servidor';
+        }
+      } else {
+        return 'Error de conexión: ${e.message}';
+      }
     } catch (e) {
-      return 'Error de conexión: $e';
+      return 'Error desconocido: $e';
     }
   }
 
@@ -369,8 +416,22 @@ class UserService {
         final errorResponse = response.data;
         return errorResponse['error'] ?? 'Error desconocido';
       }
+    } on DioException catch (e) {
+      if (e.response != null && e.response?.data != null) {
+        // Intenta leer el mensaje de error del backend
+        final errorData = e.response?.data;
+        if (errorData is Map && errorData.containsKey('error')) {
+          return errorData['error'];
+        } else if (errorData is String) {
+          return errorData;
+        } else {
+          return 'Error inesperado del servidor';
+        }
+      } else {
+        return 'Error de conexión: ${e.message}';
+      }
     } catch (e) {
-      return 'Error de conexión: $e';
+      return 'Error desconocido: $e';
     }
   }
 
@@ -443,6 +504,7 @@ class UserService {
         await prefs.remove('access_token');
         await prefs.remove('refresh_token');
         await prefs.setBool('isLoggedIn', false);
+        await prefs.setBool('acceptedRequirements', false);
         return null; // Logout exitoso
       } else {
         return 'Error al cerrar sesión. Código: ${response.statusCode}';
@@ -452,9 +514,9 @@ class UserService {
         return e.response?.data['error'] ??
             'Error desconocido al cerrar sesión.';
       }
-      return 'Error de conexión: ${e.message}';
+      return 'Se produjo un error al cerrar sesión: Conectate a internet';
     } catch (e) {
-      return 'Error inesperado: $e';
+      return 'Error inesperado: Conectate a internet';
     }
   }
 
@@ -470,8 +532,48 @@ class UserService {
       } else {
         return 'Error en la eliminación de cuenta. Código de estado: ${response.statusCode}';
       }
+    } on DioException catch (e) {
+      //print("Errorrrrrrrrrrrrrrrrrrrrrr${e.response?.data['error']}");
+      if (e.response != null && e.response?.data != null) {
+        return e.response?.data['error'] ??
+            'Error desconocido al eliminar cuenta.';
+      }
+      return 'Error de conexión: ${e.message}';
     } catch (e) {
       return 'Error de conexión: $e';
     }
+  }
+
+  //servicio para reenviar el correo de verificacion
+  Future<String?> resendCorreoVerificacion() async {
+    try {
+      final response = await dioClient.post(
+        '/user/send-verification-email/',
+      );
+
+      if (response.statusCode == 200) {
+        return response.data['message'];
+      } else {
+        return 'Error en el envio de correo: ${response.statusCode}';
+      }
+    } on DioException catch (e) {
+      //print("Errorrrrrrrrrrrrrrrrrrrrrr${e.response?.data['error']}");
+      if (e.response != null && e.response?.data != null) {
+        return e.response?.data['error'] ??
+            'Error desconocido al verificar correo.';
+      }
+      return 'Error de conexión: ${e.message}';
+    } catch (e) {
+      return 'Error de conexión: $e';
+    }
+  }
+
+  Future<void> clearTokens() async {
+    // Lógica para eliminar los tokens guardados, por ejemplo:
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('access_token');
+    await prefs.remove('refresh_token');
+    await prefs.setBool('isLoggedIn', false);
+    await prefs.setBool('acceptedRequirements', false);
   }
 }

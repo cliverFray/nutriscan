@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../widgets/custom_pass_input.dart';
 import 'bottom_nav_menu.dart';
 import 'change_password/forgot_password_screen.dart';
+import 'login_screen_2.dart';
 import 'onboarding_screen.dart';
 import 'sign_in_screen.dart';
 import '../widgets/custom_elevated_buton.dart';
@@ -34,11 +35,9 @@ class _LoginScreenState extends State<LoginScreen> {
     String phone = phoneController.text;
     String password = passwordController.text;
 
-    // Validaciones
     setState(() {
       phoneErrorMessage = null;
       passwordErrorMessage = null;
-      _isLoading = true;
       _errorMessage = null;
     });
 
@@ -56,17 +55,22 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
       UserService us = UserService();
       String? errorMessage = await us.loginUser(phone, password);
       if (errorMessage == null) {
-        //trampitar
-        // Login exitoso
-        Navigator.pushReplacement(
+        // Login exitos
+        Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(
-            builder: (context) => BottomNavMenu(),
+            builder: (context) => BottomNavMenu(), // Tu pantalla destino
           ),
+          (Route<dynamic> route) =>
+              false, // Esto borra TODA la pila de navegación
         );
       } else {
         setState(() {
@@ -185,6 +189,15 @@ class _LoginScreenState extends State<LoginScreen> {
                             width: 290,
                           ),
                     SizedBox(height: 5),
+
+                    CustomElevatedButton(
+                      text: 'Abrir login',
+                      onPressed: () {
+                        Navigator.push(context,
+                            MaterialPageRoute(builder: (context) => Login()));
+                      },
+                      width: 290,
+                    ),
 
                     // Texto "¿No tienes cuenta? Regístrate"
                     Row(

@@ -24,15 +24,19 @@ class Child {
 
   factory Child.fromJson(Map<String, dynamic> json) {
     return Child(
-        childId: json['childId'],
-        childName: json['childName'],
-        childLastName: json['childLastName'],
-        childBirthDate:
-            DateTime.parse(json['childBirthDate']), // Convertir fecha de JSON
-        childAgeMonth: json['childAgeMonth'],
-        childGender: json['childGender'] == true,
-        childCurrentWeight: double.parse(json['childCurrentWeight']),
-        childCurrentHeight: double.parse(json['childCurrentHeight']));
+      childId: json['childId'],
+      childName: json['childName'] ?? '',
+      childLastName: json['childLastName'] ?? '',
+      childBirthDate: DateTime.parse(json['childBirthDate']),
+      childAgeMonth: json['childAgeMonth'] ?? 0,
+      childGender: json['childGender'] == true,
+      childCurrentWeight: json['childCurrentWeight'] != null
+          ? double.parse(json['childCurrentWeight'].toString())
+          : null,
+      childCurrentHeight: json['childCurrentHeight'] != null
+          ? double.parse(json['childCurrentHeight'].toString())
+          : null,
+    );
   }
 
   Map<String, dynamic> toJson() {

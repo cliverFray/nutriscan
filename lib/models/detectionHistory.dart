@@ -6,6 +6,8 @@ class DetectionHistory {
   final String detectionImageUrl;
   final int childId;
   final String childName;
+  final String? confidence;
+  final String? immediateRecommendation;
 
   DetectionHistory({
     required this.detectionId,
@@ -14,6 +16,8 @@ class DetectionHistory {
     required this.detectionImageUrl,
     required this.childId,
     required this.childName,
+    this.confidence,
+    this.immediateRecommendation,
   });
 
   factory DetectionHistory.fromJson(Map<String, dynamic> json) {
@@ -24,6 +28,9 @@ class DetectionHistory {
       detectionImageUrl: json['detectionImageUrl'],
       childId: json['childId'],
       childName: json['childName'],
+      confidence: json['confidence'], // puede ser null
+      immediateRecommendation:
+          json['immediateRecommendation'], // puede ser null
     );
   }
 }

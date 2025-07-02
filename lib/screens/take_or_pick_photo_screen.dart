@@ -10,6 +10,8 @@ import '../models/malnutrition_detection.dart';
 
 import 'package:permission_handler/permission_handler.dart'; // import para los permisos
 
+import 'package:device_info_plus/device_info_plus.dart';
+
 class TakeOrPickPhotoScreen extends StatefulWidget {
   final int childId;
 
@@ -34,6 +36,8 @@ class _TakeOrPickPhotoScreenState extends State<TakeOrPickPhotoScreen> {
       ImageValidationService(); // Instancia del servicio de validación
   final DetectionService _detectionService =
       DetectionService(); // Instancia del servicio de detección
+
+  bool imageIsValid = false;
 
   void _showPermissionDialog({required String title, required String message}) {
     showDialog(
@@ -68,9 +72,11 @@ class _TakeOrPickPhotoScreenState extends State<TakeOrPickPhotoScreen> {
     if (cameraStatus.isGranted) {
       final pickedFile = await _picker.pickImage(source: ImageSource.camera);
       if (pickedFile != null) {
+        _showLoadingDialog("Mostrando la imagen....");
         setState(() {
           _image = File(pickedFile.path);
         });
+        Navigator.pop(context);
         _validateAndCheckImage(_image!);
       }
     } else if (cameraStatus.isPermanentlyDenied) {
@@ -84,24 +90,18 @@ class _TakeOrPickPhotoScreenState extends State<TakeOrPickPhotoScreen> {
     }
   }
 
-  // Método para seleccionar una foto desde la galería
-  // Método para solicitar permisos antes de acceder a la galería
+  // Método para seleccionar una foto desde la galería (solo Android)
   Future<void> _pickFromGallery() async {
-    PermissionStatus galleryStatus;
+    // En Android 13+ usamos READ_MEDIA_IMAGES; en versiones anteriores READ_EXTERNAL_STORAGE
+    final isAndroid13OrAbove =
+        Platform.isAndroid && (await _getAndroidSdkInt()) >= 33;
+    final galleryPermission =
+        isAndroid13OrAbove ? Permission.photos : Permission.storage;
 
-    if (Platform.isAndroid) {
-      if (await Permission.photos.isGranted ||
-          await Permission.photos.request().isGranted) {
-        // Ya tenemos permiso
-        galleryStatus = PermissionStatus.granted;
-      } else {
-        galleryStatus = await Permission.photos.request();
-      }
-    } else {
-      galleryStatus = await Permission.photos.request();
-    }
+    final status = await galleryPermission.status;
 
-    if (galleryStatus.isGranted) {
+    if (status.isGranted) {
+      // Permiso concedido
       final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
       if (pickedFile != null) {
         setState(() {
@@ -109,7 +109,27 @@ class _TakeOrPickPhotoScreenState extends State<TakeOrPickPhotoScreen> {
         });
         _validateAndCheckImage(_image!);
       }
-    } else if (galleryStatus.isPermanentlyDenied) {
+    } else if (status.isDenied) {
+      // Solicitar permiso
+      final newStatus = await galleryPermission.request();
+      if (newStatus.isGranted) {
+        final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+        if (pickedFile != null) {
+          setState(() {
+            _image = File(pickedFile.path);
+          });
+          _validateAndCheckImage(_image!);
+        }
+      } else if (newStatus.isPermanentlyDenied) {
+        _showPermissionDialog(
+          title: 'Permiso de galería requerido',
+          message:
+              'Para seleccionar imágenes, debes habilitar el permiso de galería en los ajustes de la aplicación.',
+        );
+      } else {
+        _showSnackBar('Permiso de galería denegado.', isError: true);
+      }
+    } else if (status.isPermanentlyDenied) {
       _showPermissionDialog(
         title: 'Permiso de galería requerido',
         message:
@@ -120,20 +140,47 @@ class _TakeOrPickPhotoScreenState extends State<TakeOrPickPhotoScreen> {
     }
   }
 
+// Método para obtener la versión de SDK de Android
+  Future<int> _getAndroidSdkInt() async {
+    try {
+      final androidInfo = await DeviceInfoPlugin().androidInfo;
+      return androidInfo.version.sdkInt ?? 0;
+    } catch (e) {
+      print('Error obteniendo SDK: $e');
+      return 0;
+    }
+  }
+
   // Método para validar la imagen usando el servicio
-  Future<void> _validateAndCheckImage(File image) async {
-    final validationResult = await _imageValidationService.validateImage(image);
+  Future<bool> _validateAndCheckImage(File image) async {
+    // Mostrar el loader
+    _showLoadingDialog("Validando la imagen. Esto no tomará mucho tiempo....");
+
+    final validationResult =
+        await _imageValidationService.validateImage(image, widget.childId);
+
+    // Cerrar el loader
+    Navigator.pop(context);
 
     if (!validationResult['valid']) {
-      // Si la imagen no es válida, muestra el mensaje de error
+      // Imagen no válida
       _showSnackBar(validationResult['message'], isError: true);
       setState(() {
-        _image =
-            null; // Reinicia la imagen para que el usuario vuelva a intentar
+        _image = null; // Reinicia la imagen
       });
+      imageIsValid = false;
+      return false;
     } else {
-      // Si la imagen es válida, permite continuar
+      if (validationResult['error'] ?? false) {
+        // Imagen no válida
+        _showSnackBar(validationResult['message'], isError: true);
+        imageIsValid = false;
+        return false;
+      }
+      // Imagen válida
       _showSnackBar('Imagen válida. Puedes continuar.', isError: false);
+      imageIsValid = true;
+      return true;
     }
   }
 
@@ -149,7 +196,7 @@ class _TakeOrPickPhotoScreenState extends State<TakeOrPickPhotoScreen> {
   }
 
   // Método para mostrar el indicador de carga
-  Future<void> _showLoadingDialog() async {
+  Future<void> _showLoadingDialog(String message) async {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -157,13 +204,19 @@ class _TakeOrPickPhotoScreenState extends State<TakeOrPickPhotoScreen> {
         return Dialog(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(width: 16),
-                Text("Procesando..."),
-              ],
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text(
+                    message,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -174,7 +227,7 @@ class _TakeOrPickPhotoScreenState extends State<TakeOrPickPhotoScreen> {
   // Método para subir la imagen al endpoint de detección
   Future<void> _uploadImage(File image) async {
     // Mostrar indicador de carga
-    _showLoadingDialog();
+    _showLoadingDialog("Subiendo y procesando......");
     // Llama al servicio de detección con el ID del niño y la imagen validada
     try {
       final detectionResult = await _detectionService.uploadDetectionImage(
@@ -183,8 +236,16 @@ class _TakeOrPickPhotoScreenState extends State<TakeOrPickPhotoScreen> {
       // Cierra el indicador de carga
       Navigator.pop(context);
 
-      if (detectionResult != null) {
-        // Si la detección fue exitosa, navega a la pantalla de resultados
+      if (detectionResult is Map<String, dynamic> &&
+          detectionResult!.containsKey('detectionResult') &&
+          detectionResult!.containsKey('immediateRecommendation') &&
+          detectionResult!.containsKey('imc') &&
+          detectionResult!.containsKey('imcCategory')) {
+        /* final String resultado = detectionResult['detectionResult']!;
+        final String recomendacion = detectionResult['immediateRecommendation']!;
+        final double imc = double.tryParse(detectionResult['imc'].toString()) ?? 0.0;
+        final String imcCategory = detectionResult['imcCategory']!; */
+
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -195,9 +256,26 @@ class _TakeOrPickPhotoScreenState extends State<TakeOrPickPhotoScreen> {
           ),
         );
       } else {
-        // Si la subida falla, muestra un mensaje de error
-        _showSnackBar('Error al subir la imagen para detección.',
-            isError: true);
+        // Si contiene la llave 'error'
+        if (detectionResult is Map<String, dynamic> &&
+            detectionResult!.containsKey('error')) {
+          final errorMessage = detectionResult['error']!;
+          // Si la subida falla, muestra un mensaje de error
+          _showSnackBar(errorMessage, isError: true);
+        }
+        if (detectionResult is Map<String, dynamic> &&
+            detectionResult!.containsKey('unknowerror')) {
+          final errorMessage = detectionResult['unknowerror']!;
+          // Si la subida falla, muestra un mensaje de error
+          _showSnackBar(errorMessage, isError: true);
+        }
+
+        if (detectionResult is Map<String, dynamic> &&
+            detectionResult!.containsKey('conexionerror')) {
+          final errorMessage = detectionResult['conexionerror']!;
+          // Si la subida falla, muestra un mensaje de error
+          _showSnackBar(errorMessage, isError: true);
+        }
       }
     } catch (e) {
       // Cierra el indicador de carga en caso de error
@@ -287,20 +365,9 @@ class _TakeOrPickPhotoScreenState extends State<TakeOrPickPhotoScreen> {
                 child: CustomButton2(
                   onPressed: () async {
                     // Validar y subir la imagen si cumple con los requisitos
-                    final validationResult =
-                        await _imageValidationService.validateImage(_image!);
-
-                    if (validationResult['valid']) {
-                      // Si la imagen es válida, procede a subirla
+                    //final isValid = await _validateAndCheckImage(_image!);
+                    if (imageIsValid) {
                       await _uploadImage(_image!);
-                    } else {
-                      _showSnackBar(
-                        validationResult['message'],
-                        isError: true,
-                      );
-                      setState(() {
-                        _image = null; // Reinicia la imagen si no es válida
-                      });
                     }
                   },
                   buttonText: "Validar y Subir Foto",

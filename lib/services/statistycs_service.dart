@@ -23,10 +23,12 @@ class StaticstycService {
       final response = await dioClient.get('/children/$child_id/growth-chart/');
 
       if (response.statusCode == 200) {
-        print(response.data);
+        print("pesos y tallassss ${GrowthChartData.fromJson(response.data)}");
         return GrowthChartData.fromJson(response.data);
       } else if (response.statusCode == 204) {
-        throw Exception('No hay suficientes datos para generar el gráfico.');
+        // Devuelve datos vacíos en lugar de lanzar excepción
+        return GrowthChartData(
+            weights: [], heights: [], dates: [], childName: '');
       } else {
         throw Exception(
             'Error ${response.statusCode}: ${response.data['error'] ?? 'No se pudo obtener los datos.'}');
@@ -50,11 +52,12 @@ class StaticstycService {
 
       if (response.statusCode == 200) {
         final List<dynamic> jsonList = response.data;
+        print("Lista deteccionesssssssssss: $jsonList");
 
         return jsonList.map((json) => DetectionResult.fromJson(json)).toList();
       } else if (response.statusCode == 204) {
-        print('No Content (204), sin datos de detección.'); // << AÑADIDO
-        throw Exception('No hay suficientes datos para generar el gráfico.');
+        // Devuelve lista vacía
+        return [];
       } else {
         throw Exception(
             'Error ${response.statusCode}: ${response.data['error'] ?? 'No se pudo obtener los datos.'}');

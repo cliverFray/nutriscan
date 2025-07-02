@@ -6,6 +6,7 @@ class UserUpdate {
   final String userPhone;
   final String userEmail;
   final String userPlace;
+  final bool? isemailverified;
 
   // Constructor
   UserUpdate({
@@ -16,6 +17,7 @@ class UserUpdate {
     required this.userPhone,
     required this.userEmail,
     required this.userPlace,
+    this.isemailverified,
   });
 
   // Factory para crear un nuevo objeto desde JSON
@@ -30,6 +32,7 @@ class UserUpdate {
       userPhone: json['user']['userPhone'],
       userEmail: json['user']['user']['email'],
       userPlace: json['user']['userPlace'],
+      isemailverified: json['user']['is_confirmed'],
     );
   }
 

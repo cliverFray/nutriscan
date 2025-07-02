@@ -17,6 +17,9 @@ class ProfileSettingsScreen extends StatelessWidget {
     final TextEditingController passwordController = TextEditingController();
     final Color primaryColor = Color(0xFF83B56A);
 
+    // Obtenemos un contexto seguro para mostrar SnackBars
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -53,7 +56,7 @@ class ProfileSettingsScreen extends StatelessWidget {
                 final password = passwordController.text;
 
                 if (password.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  scaffoldMessenger.showSnackBar(
                     SnackBar(
                       content: Text('La contraseña no puede estar vacía.'),
                       backgroundColor: Colors.red,
@@ -62,53 +65,66 @@ class ProfileSettingsScreen extends StatelessWidget {
                   return;
                 }
 
-                Navigator.of(context)
-                    .pop(); // Cierra el diálogo de confirmación
-
                 // Mostrar diálogo de carga
+                late BuildContext dialogContext;
                 showDialog(
                   context: context,
                   barrierDismissible: false,
-                  builder: (context) => AlertDialog(
-                    content: Row(
-                      children: [
-                        CircularProgressIndicator(color: primaryColor),
-                        SizedBox(width: 16),
-                        Text("Eliminando cuenta..."),
-                      ],
-                    ),
-                  ),
+                  builder: (BuildContext context) {
+                    dialogContext = context;
+                    return AlertDialog(
+                      content: Row(
+                        children: [
+                          CircularProgressIndicator(color: primaryColor),
+                          SizedBox(width: 16),
+                          Text("Eliminando cuenta..."),
+                        ],
+                      ),
+                    );
+                  },
                 );
 
+                // Llamar a la función que elimina la cuenta
                 String? result = await _userService.deleteAccount(password);
 
-                Navigator.of(context).pop(); // Cierra el diálogo de carga
+                // Cierra el diálogo de carga
+                Navigator.of(dialogContext).pop();
 
                 if (result == null) {
-                  // Mostrar diálogo de éxito antes de redirigir
-                  showDialog(
-                    context: context,
-                    builder: (_) => AlertDialog(
-                      title: Text("Cuenta eliminada"),
-                      content: Text(
-                          "Tu cuenta ha sido eliminada exitosamente. Gracias por haber usado NutriScan."),
-                      actions: [
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pushAndRemoveUntil(
-                              context,
-                              MaterialPageRoute(builder: (_) => LoginScreen()),
-                              (route) => false,
-                            );
-                          },
-                          child: Text("Aceptar"),
-                        ),
-                      ],
-                    ),
-                  );
+                  // Eliminar los tokens también
+                  await _userService.clearTokens();
+
+                  // Pequeña espera antes de mostrar el nuevo diálogo
+                  await Future.delayed(Duration(milliseconds: 100));
+
+                  // Cuenta eliminada con éxito
+                  if (context.mounted) {
+                    showDialog(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: Text("Cuenta eliminada"),
+                        content: Text(
+                            "Tu cuenta ha sido eliminada exitosamente. Gracias por haber usado NutriScan."),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pushAndRemoveUntil(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => LoginScreen()),
+                                (route) => false,
+                              );
+                            },
+                            child: Text("Aceptar"),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
                 } else {
-                  // Mostrar error en SnackBar
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  Navigator.of(context)
+                      .pop(); // Cierra el diálogo de confirmación
+                  scaffoldMessenger.showSnackBar(
                     SnackBar(
                       content: Text(result),
                       backgroundColor: Colors.red,
@@ -218,7 +234,7 @@ class ProfileSettingsScreen extends StatelessWidget {
               );
             },
           ),
-          Divider(),
+          /* Divider(),
           ListTile(
             leading: Icon(Icons.security, color: Colors.black),
             title: Text('Seguridad', style: TextStyle(fontSize: 18)),
@@ -231,7 +247,7 @@ class ProfileSettingsScreen extends StatelessWidget {
                     builder: (context) => SecuritySettingsScreen()),
               );
             },
-          ),
+          ), */
           Divider(),
           ListTile(
             leading: Icon(Icons.delete, color: Colors.black),

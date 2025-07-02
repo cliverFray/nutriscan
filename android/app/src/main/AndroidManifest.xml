@@ -7,13 +7,39 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/> <!-- Android 13+ -->
 
-    <!-- Si estás usando Android 13 o superior, considera reemplazar los 2 de arriba por esto -->
-    <!-- <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/> -->
+    <!--Para programar recordatorios mensuales-->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
+
+    <!--Para el acceso a internet-->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--Para notificaciones-->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY"/>
+
     
+    
+    <!--Aplicacion-->
     <application
         android:label="nutriscan"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!--Receivers para notifications-->
+        <receiver android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" android:exported="false"/>
+
+        <receiver android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver" android:exported="false">
+        <intent-filter>
+            <action android:name="android.intent.action.BOOT_COMPLETED"/>
+            <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+            <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
+            <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+        </intent-filter>
+        </receiver>
+
+        <receiver android:name="com.dexterous.flutterlocalnotifications.FlutterLocalNotificationsReceiver" android:exported="false"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"

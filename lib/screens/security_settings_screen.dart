@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/user_service.dart';
+import '../widgets/custom_pass_input.dart';
 
 class SecuritySettingsScreen extends StatefulWidget {
   @override
@@ -11,6 +12,43 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
   final TextEditingController currentPasswordController =
       TextEditingController();
   final TextEditingController newPasswordController = TextEditingController();
+
+  String? passwordError;
+
+  bool showNewPassword = false;
+  bool showCurrentPassword = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    newPasswordController.addListener(() {
+      validatePassword();
+    });
+  }
+
+  // Función de validación de contraseña
+  void validatePassword() {
+    final password = newPasswordController.text.trim();
+
+    final hasMinLength = password.length >= 8;
+    final hasUppercase = password.contains(RegExp(r'[A-Z]'));
+    final hasSpecialChar =
+        password.contains(RegExp(r'[!@#\$%^&*(),.?":{}|<>]'));
+    final hasNumber = password.contains(RegExp(r'\d'));
+
+    setState(() {
+      passwordError = (password.isNotEmpty && !hasMinLength)
+          ? "La contraseña debe tener al menos 8 caracteres."
+          : (password.isNotEmpty && !hasUppercase)
+              ? "La contraseña debe tener al menos una letra mayúscula."
+              : (password.isNotEmpty && !hasSpecialChar)
+                  ? "La contraseña debe tener al menos un carácter especial."
+                  : (password.isNotEmpty && !hasNumber)
+                      ? "La contraseña debe tener al menos un número."
+                      : null;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,22 +62,38 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
+            PasswordInputWidget(
+              hintText: 'Contraseña actual',
               controller: currentPasswordController,
-              obscureText: true,
-              decoration: InputDecoration(
-                labelText: 'Contraseña Actual',
-                border: OutlineInputBorder(),
-              ),
+              isPasswordVisible: showCurrentPassword,
+              togglePasswordVisibility: () {
+                setState(() {
+                  showCurrentPassword = !showCurrentPassword;
+                });
+              },
+              errorText: passwordError, // 👈 mostrar error si lo hay
+              onTap: () {
+                setState(() {
+                  passwordError = null; // Eliminar error al enfocar
+                });
+              },
             ),
             SizedBox(height: 16),
-            TextField(
+            PasswordInputWidget(
+              hintText: 'Nueva Contraseña',
               controller: newPasswordController,
-              obscureText: true,
-              decoration: InputDecoration(
-                labelText: 'Nueva Contraseña',
-                border: OutlineInputBorder(),
-              ),
+              isPasswordVisible: showNewPassword,
+              togglePasswordVisibility: () {
+                setState(() {
+                  showNewPassword = !showNewPassword;
+                });
+              },
+              errorText: passwordError, // 👈 mostrar error si lo hay
+              onTap: () {
+                setState(() {
+                  passwordError = null; // Eliminar error al enfocar
+                });
+              },
             ),
             SizedBox(height: 16),
             ElevatedButton(
@@ -47,7 +101,11 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                 String currentPassword = currentPasswordController.text;
                 String newPassword = newPasswordController.text;
 
-                if (currentPassword.isNotEmpty && newPassword.isNotEmpty) {
+                // Ejecuta la validación antes de enviar
+
+                if (currentPassword.isNotEmpty &&
+                    newPassword.isNotEmpty &&
+                    passwordError == null) {
                   String? result = await _userService.resetPassword(
                     '', // Usa el teléfono almacenado localmente
                     '', // Usa un código si se requiere
@@ -58,12 +116,27 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                       content: Text('Contraseña actualizada exitosamente.'),
                     ));
+                    // Limpia los campos si quieres
+                    currentPasswordController.clear();
+                    newPasswordController.clear();
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                       content: Text(result),
                       backgroundColor: Colors.red,
                     ));
                   }
+                } else if (passwordError != null) {
+                  // Muestra el error de validación si la contraseña no es segura
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(passwordError!),
+                    backgroundColor: Colors.red,
+                  ));
+                } else {
+                  // Maneja el caso donde falta algún campo
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text('Por favor, completa todos los campos.'),
+                    backgroundColor: Colors.red,
+                  ));
                 }
               },
               child: Text('Actualizar Contraseña'),

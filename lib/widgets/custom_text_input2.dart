@@ -1,41 +1,39 @@
 import 'package:flutter/material.dart';
 
-class PasswordInputWidget extends StatelessWidget {
+class CustomTextInput2 extends StatelessWidget {
   final String hintText;
+  final bool isPassword;
   final TextEditingController controller;
-  final bool isPasswordVisible;
-  final VoidCallback togglePasswordVisibility;
+  final TextInputType keyboardType;
+  final Icon? suffixIcon;
   final VoidCallback? onTap;
-  final String? errorText;
+  final bool readOnly; // <- añadido
 
-  const PasswordInputWidget({
+  const CustomTextInput2({
     Key? key,
     required this.hintText,
+    this.isPassword = false,
     required this.controller,
-    required this.isPasswordVisible,
-    required this.togglePasswordVisibility,
+    this.keyboardType = TextInputType.text,
+    this.suffixIcon,
     this.onTap,
-    this.errorText, // Agregado aquí
+    this.readOnly = false, // <- valor por defecto
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
-      keyboardType: TextInputType.text,
-      obscureText: !isPasswordVisible,
-      cursorColor: Colors.black, // Color del palito de texto
+      obscureText: isPassword,
+      keyboardType: keyboardType,
+      onTap: onTap,
+      readOnly: readOnly, // <- usado aquí
+      cursorColor: Colors.black,
       decoration: InputDecoration(
         hintText: hintText,
+        hintStyle: const TextStyle(color: Color(0xFF666666)),
         fillColor: const Color(0xFFF4F4F4),
         filled: true,
-        suffixIcon: IconButton(
-          icon: Icon(
-            isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-            color: Color(0xFF83B56A),
-          ),
-          onPressed: togglePasswordVisibility,
-        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
         ),
@@ -47,10 +45,8 @@ class PasswordInputWidget extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Colors.green, width: 2),
         ),
-        // 👉 Nuevo parámetro para mostrar el error:
-        errorText: errorText,
+        suffixIcon: suffixIcon,
       ),
-      onTap: onTap,
     );
   }
 }

@@ -1,4 +1,4 @@
-import 'dart:io';
+/*import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 
 import '../models/users.dart';
@@ -93,4 +93,4 @@ Future<String> uploadImageAsPng2(File image, User user) async {
     print('Error al subir imagen: $e');
     return '';
   }
-}
+}*/

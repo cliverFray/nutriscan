@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/child_service.dart';
+import '../services/detection_service.dart';
 import 'detection_history_screen.dart';
+import 'photo_examples_screen.dart';
 import 'register_child_screen.dart';
 import 'take_or_pick_photo_screen.dart';
 
@@ -13,10 +16,35 @@ class _DeteccionScreenState extends State<DeteccionScreen> {
   List<Map<String, dynamic>> children = [];
   bool isLoading = true;
 
+  bool _hasAcceptedRequirements = false;
+
+  final detectionService = DetectionService();
+
+  final ChildService _childService = ChildService();
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAcceptedRequirements();
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _fetchChildrenNames();
+  }
+
+  Future<void> _checkAcceptedRequirements() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool accepted = prefs.getBool('acceptedRequirements') ?? false;
+    setState(() {
+      _hasAcceptedRequirements = accepted;
+    });
+  }
+
+  Future<void> _setAcceptedRequirements(bool value) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('acceptedRequirements', value);
   }
 
   @override
@@ -39,7 +67,7 @@ class _DeteccionScreenState extends State<DeteccionScreen> {
             ),
             SizedBox(height: 16),
 
-            // Imagen de un padre tomando foto al niño
+            // Imagen
             Center(
               child: Image.asset(
                 'assets/images/foto_padre_niño.jpg',
@@ -59,7 +87,7 @@ class _DeteccionScreenState extends State<DeteccionScreen> {
             ),
             SizedBox(height: 8),
             Text(
-              'Utiliza la inteligencia artificial para analizar la foto facial de tu hijo y detectar posibles signos de desnutrición, basándose en los datos que conoces como el nombre, edad y género. Si no cuentas con el peso y la talla actuales, la precisión puede ser menor, pero al proporcionar estos datos, la detección será más precisa.',
+              'Utiliza la inteligencia artificial para analizar la foto facial de tu hijo y detectar posibles signos de desnutrición. Solo se permiten fotos de niños de hasta 5 años.',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.black,
@@ -67,7 +95,7 @@ class _DeteccionScreenState extends State<DeteccionScreen> {
             ),
             SizedBox(height: 16),
 
-            // Subtítulo y descripción
+            // Consideraciones
             Text(
               'Consideraciones para tomar la foto',
               style: TextStyle(
@@ -78,7 +106,6 @@ class _DeteccionScreenState extends State<DeteccionScreen> {
             ),
             SizedBox(height: 20),
 
-            // Consideraciones con íconos
             _buildConsiderationItem(Icons.lightbulb_outline,
                 'Asegúrate de que el rostro del niño esté bien iluminado.'),
             _buildConsiderationItem(
@@ -94,16 +121,81 @@ class _DeteccionScreenState extends State<DeteccionScreen> {
             _buildConsiderationItem(
                 Icons.tune, 'Evite usar filtros para tomar la foto.'),
 
+            // En la parte inferior del Column principal, justo antes del "Ver historial":
+            SizedBox(height: 16),
+
+// Botón para mostrar ejemplos de fotos válidas y no válidas
+            Center(
+              child: OutlinedButton.icon(
+                icon: Icon(Icons.image_search, color: Color(0xFF83B56A)),
+                label: Text(
+                  'Ver ejemplos de fotos válidas y no válidas',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Color(0xFF83B56A),
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Color(0xFF83B56A)),
+                  padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PhotoExamplesScreen(),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+            SizedBox(height: 16),
+
+            // Checkbox de aceptación
+            Row(
+              children: [
+                Checkbox(
+                  value: _hasAcceptedRequirements,
+                  onChanged: (value) async {
+                    setState(() {
+                      _hasAcceptedRequirements = value!;
+                    });
+                    if (value!) {
+                      await _setAcceptedRequirements(true);
+                    }
+                  },
+                  activeColor: Color(0xFF83B56A),
+                ),
+                Expanded(
+                  child: Text(
+                    'He leído los requisitos para subir la foto',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.orange,
+                      decoration: TextDecoration.underline, // <--- subrayado
+                    ),
+                  ),
+                ),
+              ],
+            ),
             SizedBox(height: 16),
 
             // Botón "Tomar o subir foto"
             Center(
               child: ElevatedButton(
-                onPressed: () {
-                  _showSelectChildDialog(context);
-                },
+                onPressed: _hasAcceptedRequirements
+                    ? () {
+                        _showSelectChildDialog(context);
+                      }
+                    : null, // Deshabilitado si no está aceptado
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF83B56A),
+                  backgroundColor: _hasAcceptedRequirements
+                      ? Color(0xFF83B56A)
+                      : Colors.grey,
                   padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -121,11 +213,10 @@ class _DeteccionScreenState extends State<DeteccionScreen> {
 
             SizedBox(height: 16),
 
-            // Texto para ver el historial
+            // Ver historial
             Center(
               child: TextButton(
                 onPressed: () {
-                  // Acción para ver el historial
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -147,7 +238,6 @@ class _DeteccionScreenState extends State<DeteccionScreen> {
     );
   }
 
-  // Método para construir las consideraciones
   Widget _buildConsiderationItem(IconData icon, String text) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -170,8 +260,6 @@ class _DeteccionScreenState extends State<DeteccionScreen> {
     );
   }
 
-  // Diálogo para seleccionar al niño
-  // Diálogo para seleccionar al niño
   void _showSelectChildDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -248,17 +336,71 @@ class _DeteccionScreenState extends State<DeteccionScreen> {
                         child: Text("Cancelar"),
                       ),
                       TextButton(
-                        onPressed: () {
+                        onPressed: () async {
                           if (selectedChild != null) {
-                            Navigator.of(context).pop();
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => TakeOrPickPhotoScreen(
-                                  childId: selectedChild?['childId'],
+                            final fetchedChild = await _childService
+                                .getChildById(selectedChild!['childId']);
+
+                            final String? peso =
+                                fetchedChild!.childCurrentWeight.toString();
+                            final String? talla =
+                                fetchedChild.childCurrentHeight?.toString();
+
+                            if (peso == null ||
+                                talla == null ||
+                                peso.isEmpty ||
+                                talla.isEmpty) {
+                              showDialog(
+                                context: context,
+                                builder: (_) => AlertDialog(
+                                  title: Text("Datos incompletos"),
+                                  content: Text(
+                                    "Debes ingresar el peso y la talla del niño para continuar con la detección.",
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(),
+                                      child: Text("Aceptar"),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            );
+                              );
+                              return; // No continuar
+                            }
+
+                            final result = await detectionService
+                                .checkDailyDetection(selectedChild!['childId']);
+
+                            if (result.containsKey('exists') &&
+                                result['exists'] == true) {
+                              // Mostrar mensaje si ya se detectó hoy
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title:
+                                      Text("Ya se realizó una detección hoy"),
+                                  content: Text(
+                                      "Este niño ya tiene una detección registrada hoy. Por favor, selecciona otro niño o espera hasta mañana para realizar una nueva detección con el mismo."),
+                                  actions: [
+                                    TextButton(
+                                      child: Text("Aceptar"),
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            } else {
+                              Navigator.of(context).pop();
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => TakeOrPickPhotoScreen(
+                                      childId: selectedChild!['childId']),
+                                ),
+                              );
+                            }
                           }
                         },
                         child: Text("Continuar"),
